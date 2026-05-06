@@ -1,0 +1,525 @@
+// ============================================================
+//  Simulasi Peternakan Ayam Petelur
+//  OpenGL 3.3 Core Profile | C++17 | CMake
+//
+//  KONTROL:
+//   W/A/S/D          : gerak kamera
+//   Q / E            : naik / turun
+//   Klik Kanan+Drag  : putar pandangan
+//   Scroll           : zoom maju/mundur
+//   F                : beri pakan -> ayam bobbing + telur muncul
+//   H                : gerobak datang + panen telur
+//   ESC              : keluar
+// ============================================================
+
+#include "Mesh.h"
+#include "Shapes.h"
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <cmath>
+#include <cstdlib>
+
+// ────────────────────────────────────────────────
+//  KONSTANTA LAYOUT
+// ────────────────────────────────────────────────
+constexpr int   SCR_W      = 1280;
+constexpr int   SCR_H      = 720;
+constexpr int   NUM_AYAM   = 300;
+
+// Grid ayam: 10 baris, 15 kolom per sisi (kiri+kanan = 300)
+constexpr int   BARIS_AYAM = 10;
+constexpr int   KOLOM_AYAM = 15;
+constexpr float JARAK_X    = 1.2f;
+constexpr float JARAK_Z    = 1.5f;
+
+constexpr int   JML_SEKSI  = 5;   // seksi kandang (untuk tiang/atap)
+
+// ────────────────────────────────────────────────
+//  KAMERA — posisi dari luar, menghadap ke dalam
+// ────────────────────────────────────────────────
+glm::vec3 cameraPos   = glm::vec3(0.0f, 6.0f, 24.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, -0.22f, -1.0f);
+glm::vec3 cameraUp    = glm::vec3(0.0f,  1.0f,  0.0f);
+
+float yaw     = -90.0f;
+float pitch   = -12.5f;
+float deltaTime = 0.0f, lastFrame = 0.0f;
+
+bool   mouseRight = false;
+double lastMX = 0, lastMY = 0;
+
+// ────────────────────────────────────────────────
+//  STATE SIMULASI
+// ────────────────────────────────────────────────
+enum class SimState { IDLE, FEEDING, HARVESTING };
+SimState simState = SimState::IDLE;
+
+struct EggInfo { bool visible=false; float spawnTime=0.0f; glm::vec3 pos; };
+EggInfo eggs[NUM_AYAM];
+
+float ayamBobs[NUM_AYAM];
+float ayamBobPhase[NUM_AYAM];
+bool  ayamFeeding[NUM_AYAM];
+float feedStartTime = 0.0f;
+const float FEED_DUR = 5.0f;
+
+struct Gerobak {
+    glm::vec3 pos      = {0,0,25};
+    float     targetZ  = 0;
+    bool      active   = false, returning = false;
+    float     speed    = 8.0f, wheelAngle = 0.0f;
+} gerobak;
+bool harvestDone = false;
+
+// ────────────────────────────────────────────────
+//  POSISI DASAR AYAM
+// ────────────────────────────────────────────────
+glm::vec3 ayamBasePos[NUM_AYAM];
+
+void initAyamPositions() {
+    int idx = 0;
+    for (int b = 0; b < BARIS_AYAM && idx < NUM_AYAM; b++) {
+        float z = -b * JARAK_Z;
+        for (int k = 0; k < KOLOM_AYAM && idx < NUM_AYAM; k++)
+            ayamBasePos[idx++] = { -(1.8f + k * JARAK_X), 0.20f, z };
+        for (int k = 0; k < KOLOM_AYAM && idx < NUM_AYAM; k++)
+            ayamBasePos[idx++] = {  1.8f + k * JARAK_X,  0.20f, z };
+    }
+}
+
+// ────────────────────────────────────────────────
+//  CALLBACKS
+// ────────────────────────────────────────────────
+void key_callback(GLFWwindow* window, int key, int, int action, int) {
+    if (action != GLFW_PRESS) return;
+    float now = (float)glfwGetTime();
+    if (key == GLFW_KEY_ESCAPE) glfwSetWindowShouldClose(window, true);
+
+    if (key == GLFW_KEY_F && simState == SimState::IDLE) {
+        simState = SimState::FEEDING; feedStartTime = now;
+        for (int i = 0; i < NUM_AYAM; i++) {
+            ayamFeeding[i]  = true;
+            ayamBobPhase[i] = ((float)rand()/RAND_MAX) * 6.28f;
+            eggs[i].visible   = false;
+            eggs[i].spawnTime = now + 0.5f + ((float)rand()/RAND_MAX) * 3.0f;
+        }
+    }
+    if (key == GLFW_KEY_H && !gerobak.active) {
+        simState = SimState::HARVESTING;
+        gerobak = { {0,0,26}, -(BARIS_AYAM*JARAK_Z+4.0f), true, false, 8.0f, 0.0f };
+        harvestDone = false;
+    }
+}
+
+void mouse_button_callback(GLFWwindow* window, int btn, int action, int) {
+    if (btn == GLFW_MOUSE_BUTTON_RIGHT) {
+        mouseRight = (action == GLFW_PRESS);
+        if (mouseRight) glfwGetCursorPos(window, &lastMX, &lastMY);
+    }
+}
+
+void cursor_pos_callback(GLFWwindow*, double x, double y) {
+    if (!mouseRight) return;
+    float dx = (float)(x - lastMX) * 0.15f;
+    float dy = (float)(lastMY - y) * 0.15f;
+    lastMX = x; lastMY = y;
+    yaw  += dx; pitch = glm::clamp(pitch+dy, -89.0f, 89.0f);
+    glm::vec3 f = {
+        cos(glm::radians(yaw))*cos(glm::radians(pitch)),
+        sin(glm::radians(pitch)),
+        sin(glm::radians(yaw))*cos(glm::radians(pitch))
+    };
+    cameraFront = glm::normalize(f);
+}
+
+void scroll_callback(GLFWwindow*, double, double y) {
+    cameraPos += (float)y * 1.5f * cameraFront;
+}
+
+void processInput(GLFWwindow* w) {
+    float spd = 10.0f * deltaTime;
+    glm::vec3 right = glm::normalize(glm::cross(cameraFront, cameraUp));
+    if (glfwGetKey(w, GLFW_KEY_W)==GLFW_PRESS) cameraPos += spd * cameraFront;
+    if (glfwGetKey(w, GLFW_KEY_S)==GLFW_PRESS) cameraPos -= spd * cameraFront;
+    if (glfwGetKey(w, GLFW_KEY_A)==GLFW_PRESS) cameraPos -= spd * right;
+    if (glfwGetKey(w, GLFW_KEY_D)==GLFW_PRESS) cameraPos += spd * right;
+    if (glfwGetKey(w, GLFW_KEY_Q)==GLFW_PRESS) cameraPos.y += spd;
+    if (glfwGetKey(w, GLFW_KEY_E)==GLFW_PRESS) cameraPos.y -= spd;
+}
+
+// ────────────────────────────────────────────────
+//  SHADER HELPERS
+// ────────────────────────────────────────────────
+static unsigned int compileShader(GLenum type, const char* src) {
+    unsigned int s = glCreateShader(type);
+    glShaderSource(s, 1, &src, nullptr); glCompileShader(s);
+    int ok; glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
+    if (!ok) { char b[1024]; glGetShaderInfoLog(s,1024,nullptr,b);
+               std::cerr << "SHADER ERR:\n" << b; }
+    return s;
+}
+static unsigned int makeProgram(const char* v, const char* f) {
+    unsigned int vs=compileShader(GL_VERTEX_SHADER,v),
+                 fs=compileShader(GL_FRAGMENT_SHADER,f),
+                 p=glCreateProgram();
+    glAttachShader(p,vs); glAttachShader(p,fs); glLinkProgram(p);
+    glDeleteShader(vs); glDeleteShader(fs); return p;
+}
+
+// ── GLSL — standar ──
+const char* VS_STD = R"glsl(
+#version 330 core
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aNorm;
+uniform mat4 model, view, projection;
+out vec3 fragPos; out vec3 norm;
+void main(){
+    vec4 w = model*vec4(aPos,1.0);
+    fragPos = w.xyz;
+    norm = mat3(transpose(inverse(model)))*aNorm;
+    gl_Position = projection*view*w;
+})glsl";
+
+const char* FS_STD = R"glsl(
+#version 330 core
+in vec3 fragPos; in vec3 norm;
+out vec4 FragColor;
+uniform vec3 objectColor, lightDir, lightColor;
+uniform float ambientStr;
+void main(){
+    float dif = max(dot(normalize(norm),-normalize(lightDir)),0.0);
+    FragColor = vec4((ambientStr+dif)*lightColor*objectColor,1.0);
+})glsl";
+
+// ── GLSL — instancing ayam ──
+const char* VS_INST = R"glsl(
+#version 330 core
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aNorm;
+layout(location=3) in vec3 iOff;
+layout(location=4) in float iBob;
+uniform mat4 view, projection;
+out vec3 fragPos; out vec3 norm; out float bobVal;
+void main(){
+    vec3 w = aPos + iOff + vec3(0.0,iBob,0.0);
+    fragPos=w; norm=aNorm; bobVal=iBob;
+    gl_Position = projection*view*vec4(w,1.0);
+})glsl";
+
+const char* FS_INST = R"glsl(
+#version 330 core
+in vec3 fragPos; in vec3 norm; in float bobVal;
+out vec4 FragColor;
+uniform vec3 objectColor, lightDir, lightColor;
+uniform float ambientStr;
+void main(){
+    float dif = max(dot(normalize(norm),-normalize(lightDir)),0.0);
+    vec3 col = objectColor;
+    if(bobVal > 0.002) col = mix(col, vec3(1.0,0.55,0.15), 0.45);
+    FragColor = vec4((ambientStr+dif)*lightColor*col,1.0);
+})glsl";
+
+// ────────────────────────────────────────────────
+//  RENDER HELPERS
+// ────────────────────────────────────────────────
+static void setMat4(unsigned int p,const char* n,const glm::mat4& m){
+    glUniformMatrix4fv(glGetUniformLocation(p,n),1,GL_FALSE,glm::value_ptr(m)); }
+static void setVec3(unsigned int p,const char* n,const glm::vec3& v){
+    glUniform3fv(glGetUniformLocation(p,n),1,glm::value_ptr(v)); }
+static void setFloat(unsigned int p,const char* n,float v){
+    glUniform1f(glGetUniformLocation(p,n),v); }
+
+static void draw(Mesh& m, unsigned int prog, glm::mat4 M, glm::vec3 col) {
+    setMat4(prog,"model",M); setVec3(prog,"objectColor",col);
+    glBindVertexArray(m.VAO);
+    glDrawElements(GL_TRIANGLES,(GLsizei)m.indexCount,GL_UNSIGNED_INT,nullptr);
+    glBindVertexArray(0);
+}
+
+static glm::mat4 TRS(glm::vec3 t, glm::vec3 s={1,1,1}, float rx=0, float ry=0) {
+    glm::mat4 M(1);
+    M = glm::translate(M, t);
+    if (ry != 0) M = glm::rotate(M, glm::radians(ry), {0,1,0});
+    if (rx != 0) M = glm::rotate(M, glm::radians(rx), {1,0,0});
+    return glm::scale(M, s);
+}
+
+// ────────────────────────────────────────────────
+//  MAIN
+// ────────────────────────────────────────────────
+int main() {
+    srand(42);
+
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_SAMPLES, 4);
+
+    GLFWwindow* win = glfwCreateWindow(SCR_W, SCR_H,
+        "Simulasi Peternakan | F=Pakan  H=Panen  WASD=Gerak  RClick=Putar", nullptr, nullptr);
+    if (!win) { glfwTerminate(); return -1; }
+    glfwMakeContextCurrent(win);
+    glfwSetKeyCallback(win, key_callback);
+    glfwSetMouseButtonCallback(win, mouse_button_callback);
+    glfwSetCursorPosCallback(win, cursor_pos_callback);
+    glfwSetScrollCallback(win, scroll_callback);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) return -1;
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_MULTISAMPLE);
+    glViewport(0,0,SCR_W,SCR_H);
+
+    unsigned int progStd  = makeProgram(VS_STD,  FS_STD);
+    unsigned int progInst = makeProgram(VS_INST, FS_INST);
+
+    // ── MESH ──
+    Mesh mFloor   = createBox(1,0.05f,1);
+    Mesh mWall    = createBox(1,1,0.05f);
+    Mesh mPillar  = createCylinder(0.07f,1,10);
+    Mesh mRoofL   = createBox(1,0.12f,1);    // atap miring
+    Mesh mPakan   = createBox(0.3f,0.08f,0.12f);
+    Mesh mAyam    = createBox(0.28f,0.22f,0.36f);
+    Mesh mTelur   = createSphere(0.09f,10,8);
+    Mesh mBak     = createBox(0.9f,0.5f,0.55f);
+    Mesh mRoda    = createCylinder(0.25f,0.08f,18);
+    Mesh mStick   = createCylinder(0.03f,1.2f,8);
+    Mesh mPohon   = createCylinder(0.12f,2.5f,8);
+    Mesh mDaun    = createSphere(0.9f,10,8);
+
+    // ── POSISI AYAM ──
+    initAyamPositions();
+
+    // ── INSTANCE BUFFERS ──
+    float iOffsets[NUM_AYAM*3];
+    for (int i=0;i<NUM_AYAM;i++){
+        iOffsets[i*3+0]=ayamBasePos[i].x;
+        iOffsets[i*3+1]=ayamBasePos[i].y;
+        iOffsets[i*3+2]=ayamBasePos[i].z;
+        ayamBobs[i]=0; ayamFeeding[i]=false; ayamBobPhase[i]=0;
+    }
+
+    unsigned int vboOff, vboBob;
+    glGenBuffers(1,&vboOff);
+    glBindBuffer(GL_ARRAY_BUFFER,vboOff);
+    glBufferData(GL_ARRAY_BUFFER,sizeof(iOffsets),iOffsets,GL_STATIC_DRAW);
+
+    glGenBuffers(1,&vboBob);
+    glBindBuffer(GL_ARRAY_BUFFER,vboBob);
+    glBufferData(GL_ARRAY_BUFFER,NUM_AYAM*sizeof(float),ayamBobs,GL_DYNAMIC_DRAW);
+
+    glBindVertexArray(mAyam.VAO);
+    glBindBuffer(GL_ARRAY_BUFFER,vboOff);
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3,3,GL_FLOAT,GL_FALSE,0,nullptr);
+    glVertexAttribDivisor(3,1);
+    glBindBuffer(GL_ARRAY_BUFFER,vboBob);
+    glEnableVertexAttribArray(4);
+    glVertexAttribPointer(4,1,GL_FLOAT,GL_FALSE,0,nullptr);
+    glVertexAttribDivisor(4,1);
+    glBindVertexArray(0);
+
+    // Posisi telur
+    for (int i=0;i<NUM_AYAM;i++)
+        eggs[i].pos = ayamBasePos[i] + glm::vec3(0,-0.06f,0.22f);
+
+    // ── UKURAN KANDANG ──
+    float halfW  = KOLOM_AYAM*JARAK_X + 2.5f;   // setengah lebar total (kiri+lorong)
+    float totalW = halfW*2.0f;
+    float totalD = BARIS_AYAM*JARAK_Z;
+    float seksiD = totalD / JML_SEKSI;
+
+    glm::vec3 lightDir   = glm::normalize(glm::vec3(-0.4f,-1.0f,-0.5f));
+    glm::vec3 lightColor = {1.0f,0.96f,0.88f};
+    float     ambStr     = 0.38f;
+
+    auto setLight=[&](unsigned int p){
+        setVec3(p,"lightDir",lightDir);
+        setVec3(p,"lightColor",lightColor);
+        setFloat(p,"ambientStr",ambStr);
+    };
+
+    // ─── LOOP ────────────────────────────────────
+    while (!glfwWindowShouldClose(win)) {
+        float now  = (float)glfwGetTime();
+        deltaTime  = now - lastFrame; lastFrame = now;
+        processInput(win);
+
+        // Update simulasi
+        if (simState == SimState::FEEDING) {
+            for (int i=0;i<NUM_AYAM;i++){
+                if (ayamFeeding[i]) ayamBobs[i]=0.08f*sinf(now*9.0f+ayamBobPhase[i]);
+                if (!eggs[i].visible && now>=eggs[i].spawnTime) eggs[i].visible=true;
+            }
+            if (now-feedStartTime > FEED_DUR) {
+                for (int i=0;i<NUM_AYAM;i++){ayamFeeding[i]=false;ayamBobs[i]=0;}
+                simState=SimState::IDLE;
+            }
+            glBindBuffer(GL_ARRAY_BUFFER,vboBob);
+            glBufferSubData(GL_ARRAY_BUFFER,0,NUM_AYAM*sizeof(float),ayamBobs);
+        }
+
+        if (gerobak.active) {
+            float dir = gerobak.returning ? 1.f : -1.f;
+            gerobak.pos.z    += dir*gerobak.speed*deltaTime;
+            gerobak.wheelAngle += gerobak.speed*deltaTime*180.f;
+            if (!gerobak.returning && gerobak.pos.z <= gerobak.targetZ) {
+                if (!harvestDone){for(int i=0;i<NUM_AYAM;i++)eggs[i].visible=false;harvestDone=true;}
+                gerobak.returning=true;
+            }
+            if (gerobak.returning && gerobak.pos.z>=27.f){gerobak.active=false;simState=SimState::IDLE;}
+        }
+
+        // Render
+        glClearColor(0.53f,0.81f,0.94f,1.0f);
+        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+
+        glm::mat4 view = glm::lookAt(cameraPos, cameraPos+cameraFront, cameraUp);
+        glm::mat4 proj = glm::perspective(glm::radians(55.0f),(float)SCR_W/SCR_H,0.1f,500.0f);
+
+        glUseProgram(progStd);
+        setMat4(progStd,"view",view);
+        setMat4(progStd,"projection",proj);
+        setLight(progStd);
+
+        // ══ LANTAI ══
+        // Warna hijau rumput di luar, cokelat tanah di dalam
+        draw(mFloor, progStd,
+             TRS({0,-0.025f,-totalD*0.5f},{totalW+20.f,1,totalD+30.f}),
+             {0.35f,0.55f,0.22f}); // rumput luar
+
+        draw(mFloor, progStd,
+             TRS({0,-0.02f,-totalD*0.5f},{totalW,1,totalD+1.f}),
+             {0.46f,0.34f,0.18f}); // tanah dalam kandang
+
+        // Lorong tengah (sedikit lebih gelap)
+        draw(mFloor, progStd,
+             TRS({0,-0.015f,-totalD*0.5f},{3.0f,1,totalD+1.f}),
+             {0.38f,0.28f,0.14f});
+
+        // ══ POHON DI LUAR (dekorasi) ══
+        glm::vec3 colKayuPohon = {0.42f,0.26f,0.10f};
+        glm::vec3 colDaun      = {0.22f,0.55f,0.18f};
+        float pohonX[] = {-halfW-3.5f, -halfW-6.0f, halfW+3.5f, halfW+6.5f, -halfW-5.0f, halfW+5.0f};
+        float pohonZ[] = {-2.0f, -8.0f, -3.0f, -10.0f, -totalD+2.0f, -totalD+3.0f};
+        for (int t=0;t<6;t++){
+            draw(mPohon, progStd, TRS({pohonX[t],1.25f,pohonZ[t]}), colKayuPohon);
+            draw(mDaun,  progStd, TRS({pohonX[t],3.2f, pohonZ[t]}), colDaun);
+        }
+
+        // ══ KANDANG — tiang, dinding, atap per seksi ══
+        float tH = 2.4f; // tinggi tiang
+        glm::vec3 cKayu    = {0.58f,0.36f,0.18f};
+        glm::vec3 cGenteng = {0.70f,0.24f,0.12f};
+        glm::vec3 cKawat   = {0.75f,0.75f,0.70f};
+
+        for (int s=0;s<JML_SEKSI;s++){
+            float zF = -s*seksiD, zB = -(s+1)*seksiD, zM = (zF+zB)*0.5f;
+
+            // 4 tiang per seksi (pojok kiri & kanan)
+            for (int side:{-1,1}){
+                float xT = side*halfW;
+                draw(mPillar,progStd,TRS({xT, tH*0.5f, zF},{1,tH,1}),cKayu);
+                draw(mPillar,progStd,TRS({xT, tH*0.5f, zB},{1,tH,1}),cKayu);
+            }
+
+            // Dinding kawat sisi kiri (memanjang Z)
+            draw(mWall, progStd,
+                 TRS({-halfW, tH*0.5f, zM},{1,tH,1},0,90)*glm::scale(glm::mat4(1),{seksiD,1,1}),
+                 cKawat);
+            // Dinding kawat sisi kanan (memanjang Z)
+            draw(mWall, progStd,
+                 TRS({halfW, tH*0.5f, zM},{1,tH,1},0,90)*glm::scale(glm::mat4(1),{seksiD,1,1}),
+                 cKawat);
+
+            // Dinding kawat depan & belakang
+            draw(mWall, progStd, TRS({0, tH*0.5f, zF},{totalW,tH,1}), cKawat);
+            draw(mWall, progStd, TRS({0, tH*0.5f, zB},{totalW,tH,1}), cKawat);
+
+            // Atap miring kiri
+            {
+                glm::mat4 M = glm::translate(glm::mat4(1),{-halfW*0.5f, tH+0.55f, zM});
+                M = glm::rotate(M,glm::radians(20.f),{0,0,1});
+                M = glm::scale(M,{halfW+0.5f, 0.14f, seksiD+0.3f});
+                draw(mRoofL, progStd, M, cGenteng);
+            }
+            // Atap miring kanan
+            {
+                glm::mat4 M = glm::translate(glm::mat4(1),{halfW*0.5f, tH+0.55f, zM});
+                M = glm::rotate(M,glm::radians(-20.f),{0,0,1});
+                M = glm::scale(M,{halfW+0.5f, 0.14f, seksiD+0.3f});
+                draw(mRoofL, progStd, M, cGenteng);
+            }
+        }
+
+        // ══ TEMPAT PAKAN (slot per baris, kiri+kanan) ══
+        glm::vec3 cPakan = {0.88f,0.78f,0.40f};
+        for (int b=0;b<BARIS_AYAM;b++){
+            float z = -b*JARAK_Z;
+            // Kiri
+            draw(mPakan, progStd,
+                 TRS({-(halfW*0.5f), 0.07f, z},{KOLOM_AYAM*JARAK_X*0.9f,1,1}),
+                 cPakan);
+            // Kanan
+            draw(mPakan, progStd,
+                 TRS({ halfW*0.5f, 0.07f, z},{KOLOM_AYAM*JARAK_X*0.9f,1,1}),
+                 cPakan);
+        }
+
+        // ══ TELUR ══
+        for (int i=0;i<NUM_AYAM;i++){
+            if (!eggs[i].visible) continue;
+            float sc = glm::clamp((now-eggs[i].spawnTime)/0.3f, 0.0f, 1.0f);
+            glm::mat4 M = glm::translate(glm::mat4(1),eggs[i].pos);
+            M = glm::scale(M,{sc, sc*1.3f, sc});
+            draw(mTelur, progStd, M, {0.97f,0.94f,0.87f});
+        }
+
+        // ══ GEROBAK RODA SATU ══
+        if (gerobak.active){
+            glm::vec3 gp = gerobak.pos;
+            draw(mBak,   progStd, TRS(gp+glm::vec3{0,0.42f,0}), {0.52f,0.33f,0.14f});
+            // Roda
+            glm::mat4 Mr = glm::translate(glm::mat4(1),gp+glm::vec3{0,0.28f,0.48f});
+            Mr = glm::rotate(Mr,glm::radians(gerobak.wheelAngle),{1,0,0});
+            Mr = glm::rotate(Mr,glm::radians(90.0f),{0,0,1});
+            draw(mRoda, progStd, Mr, {0.10f,0.10f,0.10f});
+            // Tongkat kiri & kanan
+            for (int s:{-1,1}){
+                glm::mat4 Ms = glm::translate(glm::mat4(1), gp+glm::vec3{s*0.34f,0.52f,-0.58f});
+                Ms = glm::rotate(Ms,glm::radians(-38.0f),{1,0,0});
+                draw(mStick, progStd, Ms, {0.36f,0.20f,0.08f});
+            }
+        }
+
+        // ══ AYAM — hardware instancing ══
+        glUseProgram(progInst);
+        setMat4(progInst,"view",view);
+        setMat4(progInst,"projection",proj);
+        setVec3(progInst,"objectColor",{0.95f,0.90f,0.70f});
+        setLight(progInst);
+        glBindVertexArray(mAyam.VAO);
+        glDrawElementsInstanced(GL_TRIANGLES,(GLsizei)mAyam.indexCount,
+                                GL_UNSIGNED_INT,nullptr,NUM_AYAM);
+        glBindVertexArray(0);
+
+        // Title bar
+        std::string t = "Simulasi Peternakan | F=Pakan  H=Panen  WASD+QE=Gerak  RClick=Putar Pandang | 300 Ayam";
+        if (simState==SimState::FEEDING)    t += " [MEMBERI PAKAN...]";
+        if (simState==SimState::HARVESTING) t += " [MEMANEN TELUR...]";
+        glfwSetWindowTitle(win, t.c_str());
+
+        glfwSwapBuffers(win);
+        glfwPollEvents();
+    }
+    glfwTerminate();
+    return 0;
+}
