@@ -1,0 +1,3 @@
+D:/Portofolio Abah/kandang-ayam/simulasi-fixed/build/CMakeFiles/SimulasiPeternakan.dir
+D:/Portofolio Abah/kandang-ayam/simulasi-fixed/build/CMakeFiles/edit_cache.dir
+D:/Portofolio Abah/kandang-ayam/simulasi-fixed/build/CMakeFiles/rebuild_cache.dir

@@ -34,26 +34,27 @@ constexpr int   SCR_W      = 1280;
 constexpr int   SCR_H      = 720;
 constexpr int   NUM_AYAM   = 50;
 
-// Grid: 5 baris x 5 kolom per sisi (kiri + kanan = 50)
-constexpr int   BARIS_AYAM = 5;
-constexpr int   KOLOM_AYAM = 5;
-constexpr float JARAK_X    = 1.3f;
-constexpr float JARAK_Z    = 1.6f;
+// Grid: 25 baris x 1 kolom per sisi (kiri + kanan = 50)
+constexpr int   BARIS_AYAM = 25;
+constexpr int   KOLOM_AYAM = 1;
+constexpr float JARAK_X    = 1.0f;    
+constexpr float JARAK_Z    = 0.60f;   // jarak antar baris (Z) — lebih rapat
 
-constexpr float LORONG_W   = 2.8f;
-constexpr float OFFSET_SISI = LORONG_W * 0.5f + 0.5f;
-constexpr float HALF_W     = OFFSET_SISI + KOLOM_AYAM * JARAK_X + 1.0f;
+constexpr float LORONG_W   = 2.4f;    // lebar lorong tengah
+constexpr float OFFSET_SISI = LORONG_W * 0.5f + 0.3f; 
+constexpr float HALF_W     = OFFSET_SISI + 1.2f; // Diperlebar agar ekor ayam tidak nembus
 constexpr float TOTAL_W    = HALF_W * 2.0f;
-constexpr float TOTAL_D    = BARIS_AYAM * JARAK_Z + 2.0f;
+constexpr float TOTAL_D    = BARIS_AYAM * JARAK_Z + 1.5f;
 
-constexpr int   JML_SEKSI  = 5;
-constexpr float TINGGI_DINDING = 2.6f;
+constexpr int   JML_SEKSI      = 5;
+constexpr float TINGGI_DINDING = 2.5f;
+constexpr float ROOF_PITCH_DEG = 20.0f;  // sudut kemiringan atap (derajat)
 
 // ──────────────────────────────────────────────────────────
 //  KAMERA
 // ──────────────────────────────────────────────────────────
-glm::vec3 cameraPos   = {0.0f, 7.0f, 28.0f};
-glm::vec3 cameraFront = {0.0f, -0.22f, -1.0f};
+glm::vec3 cameraPos   = {0.0f, 8.0f, 20.0f};
+glm::vec3 cameraFront = {0.0f, -0.30f, -1.0f};
 glm::vec3 cameraUp    = {0.0f,  1.0f,  0.0f};
 
 float yaw = -90.0f, pitch = -12.5f;
@@ -80,7 +81,7 @@ const float FEED_DUR = 6.0f;
 //  PETERNAK
 // ──────────────────────────────────────────────────────────
 struct Peternak {
-    glm::vec3 pos      = {0,0,4};
+    glm::vec3 pos      = {0.6f, 0.0f, 3.8f};  // selalu tampil di dekat pintu
     float     rot      = 180.0f;
     float     walkAnim = 0.0f;
     float     bendAngle= 0.0f;
@@ -89,21 +90,22 @@ struct Peternak {
     float     speed    = 3.5f;
     int       phase    = 0;
     float     phaseTimer = 0.0f;
-    int       currentChickenIdx = 0;  // tracking ayam yg sedang diproses
+    int       currentChickenIdx = 0;
     int       totalChickenProcessed = 0;
+    bool      arrived  = false;
 } peternak;
 
 // ──────────────────────────────────────────────────────────
 //  GEROBAK
 // ──────────────────────────────────────────────────────────
 struct Gerobak {
-    glm::vec3 pos       = {0,0,5};
+    glm::vec3 pos       = {-1.2f, 0.0f, 3.5f};  // diparkir di kiri pintu masuk
     bool      active    = false;
     bool      returning = false;
     float     targetZ   = -(TOTAL_D - 1.5f);
     float     speed     = 4.5f;
     float     wheelAngle= 0.0f;
-    int       eggsHarvested = 0;  // jumlah telur yg sudah dipanen
+    int       eggsHarvested = 0;
 } gerobak;
 bool harvestDone = false;
 
@@ -116,10 +118,12 @@ void initAyamPositions() {
     int idx = 0;
     for (int b = 0; b < BARIS_AYAM && idx < NUM_AYAM; b++) {
         float z = -(b * JARAK_Z + 1.0f);
-        for (int k = 0; k < KOLOM_AYAM && idx < NUM_AYAM; k++)
-            ayamBasePos[idx++] = {-(OFFSET_SISI + k*JARAK_X), 0.22f, z};
-        for (int k = 0; k < KOLOM_AYAM && idx < NUM_AYAM; k++)
-            ayamBasePos[idx++] = { OFFSET_SISI + k*JARAK_X,  0.22f, z};
+        // Kiri
+        ayamBasePos[idx++] = {-OFFSET_SISI, 0.22f, z};
+        if(idx < NUM_AYAM){
+            // Kanan
+            ayamBasePos[idx++] = { OFFSET_SISI, 0.22f, z};
+        }
     }
 }
 
@@ -134,25 +138,53 @@ void key_callback(GLFWwindow* win, int key, int, int action, int) {
     if (key == GLFW_KEY_F && simState == SimState::IDLE) {
         simState      = SimState::FEEDING;
         feedStartTime = now;
-        for (int i=0; i<NUM_AYAM; i++) {
+        // Reset semua ayam & telur
+        for (int i = 0; i < NUM_AYAM; i++) {
             ayamFeeding[i]  = false;
-            ayamBobPhase[i] = ((float)rand()/RAND_MAX)*6.28f;
+            ayamBobPhase[i] = ((float)rand() / RAND_MAX) * 6.28f;
+            ayamBobs[i]     = 0.0f;
             eggs[i].visible   = false;
             eggs[i].spawnTime = now + 0.5f;
         }
-        peternak.currentChickenIdx = 0;
+        // Init peternak eksplisit per-field (hindari bug aggregate init)
+        peternak.pos        = {0.0f, 0.0f, 4.0f};
+        peternak.rot        = 180.0f;
+        peternak.walkAnim   = 0.0f;
+        peternak.bendAngle  = 0.0f;
+        peternak.walking    = true;
+        peternak.targetZ    = 0.0f;
+        peternak.speed      = 5.0f;
+        peternak.phase      = 100;    // FSM: fase 100+i = beri pakan ke ayam ke-i
+        peternak.phaseTimer = now;
+        peternak.currentChickenIdx     = 0;
         peternak.totalChickenProcessed = 0;
-        peternak = {glm::vec3{0,0,4}, 180.0f, 0, 0, true,
-                    ayamBasePos[0].z, 5.0f, 100, now, 0, 0};
+        peternak.arrived    = false;
     }
 
     if (key == GLFW_KEY_H && simState == SimState::IDLE) {
-        simState = SimState::HARVESTING;
-        gerobak  = {glm::vec3{0,0,4}, true, false, -(TOTAL_D-1.5f), 4.5f, 0, 0};
+        simState    = SimState::HARVESTING;
         harvestDone = false;
-        peternak.currentChickenIdx = 0;
+        // Init gerobak
+        gerobak.pos          = {0.0f, 0.0f, 4.0f};
+        gerobak.active       = true;
+        gerobak.returning    = false;
+        gerobak.targetZ      = -(TOTAL_D - 1.5f);
+        gerobak.speed        = 4.5f;
+        gerobak.wheelAngle   = 0.0f;
+        gerobak.eggsHarvested = 0;
+        // Init peternak eksplisit per-field
+        peternak.pos        = {0.6f, 0.0f, 4.0f};
+        peternak.rot        = 180.0f;
+        peternak.walkAnim   = 0.0f;
+        peternak.bendAngle  = 0.0f;
+        peternak.walking    = true;
+        peternak.targetZ    = 0.0f;
+        peternak.speed      = 5.0f;
+        peternak.phase      = 200;    // FSM: fase 200+i = ambil telur ke-i
+        peternak.phaseTimer = now;
+        peternak.currentChickenIdx     = 0;
         peternak.totalChickenProcessed = 0;
-        peternak = {glm::vec3{0.6f,0,4}, 180.0f, 0, 0, true, 0, 5.0f, 200, now, 0, 0};
+        peternak.arrived    = false;
     }
 }
 
@@ -283,89 +315,190 @@ static glm::mat4 TRS(glm::vec3 t,glm::vec3 s={1,1,1},float rx=0,float ry=0,float
     return glm::scale(M,s);}
 
 // ──────────────────────────────────────────────────────────
-//  GAMBAR PETERNAK
+//  GAMBAR PETERNAK  (proporsi manusia lebih realistis)
 // ──────────────────────────────────────────────────────────
 static void drawPeternak(unsigned int prog,
-    Mesh& mBox,Mesh& mCyl,Mesh& mSphere,
-    glm::vec3 pos,float rotY,float walkAnim,float bendDeg,
-    glm::vec3 cBaju,glm::vec3 cKulit,glm::vec3 cCelana)
+    Mesh& mBox, Mesh& mCyl, Mesh& mSphere,
+    glm::vec3 pos, float rotY, float walkAnim, float bendDeg,
+    glm::vec3 cBaju, glm::vec3 cKulit, glm::vec3 cCelana)
 {
-    glm::mat4 root=glm::translate(glm::mat4(1),pos);
-    root=glm::rotate(root,glm::radians(rotY),{0,1,0});
+    glm::mat4 root = glm::translate(glm::mat4(1), pos);
+    root = glm::rotate(root, glm::radians(rotY), {0,1,0});
 
-    float legSw=sinf(walkAnim)*22.0f;
-    float armSw=sinf(walkAnim+3.14159f)*18.0f;
-    float bendRad=glm::radians(bendDeg);
+    float legSw  = sinf(walkAnim) * 28.0f;
+    float armSw  = sinf(walkAnim + 3.14159f) * 22.0f;
+    float bendRad = glm::radians(bendDeg);
+    glm::vec3 cSepatu = {0.18f, 0.12f, 0.06f};
+    glm::vec3 cKemeja = cBaju;
 
-    // Kaki kiri
-    {glm::mat4 M=root*glm::translate(glm::mat4(1),{-0.11f,0.45f,0});
-     M=glm::rotate(M,glm::radians(legSw),{1,0,0});
-     M=glm::translate(M,{0,-0.225f,0});M=glm::scale(M,{0.17f,0.45f,0.17f});
-     draw(mBox,prog,M,cCelana);}
-    // Kaki kanan
-    {glm::mat4 M=root*glm::translate(glm::mat4(1),{0.11f,0.45f,0});
-     M=glm::rotate(M,glm::radians(-legSw),{1,0,0});
-     M=glm::translate(M,{0,-0.225f,0});M=glm::scale(M,{0.17f,0.45f,0.17f});
-     draw(mBox,prog,M,cCelana);}
+    // ── Kaki + Sepatu ──
+    for(int side : {-1, 1}){
+        float sw = side == -1 ? legSw : -legSw;
+        // Paha atas (Celana) - pakai Silinder
+        glm::mat4 hip = root * glm::translate(glm::mat4(1), {side*0.12f, 0.60f, 0.0f});
+        hip = glm::rotate(hip, glm::radians(sw), {1,0,0});
+        { glm::mat4 M = hip * glm::translate(glm::mat4(1),{0,-0.16f,0});
+          M = glm::scale(M, {0.16f, 0.32f, 0.16f});
+          draw(mCyl, prog, M, cCelana); }
+        
+        // Engsel Lutut (membulat)
+        { glm::mat4 M = hip * glm::translate(glm::mat4(1),{0,-0.32f,0});
+          M = glm::scale(M, {0.15f, 0.15f, 0.15f});
+          draw(mSphere, prog, M, cCelana); }
 
-    // Torso (dengan bungkuk)
-    glm::mat4 torso=root*glm::translate(glm::mat4(1),{0,0.90f,0});
-    torso=glm::rotate(torso,bendRad,{1,0,0});
-    {glm::mat4 M=torso*glm::scale(glm::mat4(1),{0.34f,0.48f,0.20f});
-     draw(mBox,prog,M,cBaju);}
+        // Betis - pakai Silinder
+        glm::mat4 knee = hip * glm::translate(glm::mat4(1), {0,-0.32f, 0.0f});
+        knee = glm::rotate(knee, glm::radians(-fabsf(sw)*0.45f), {1,0,0});
+        { glm::mat4 M = knee * glm::translate(glm::mat4(1),{0,-0.16f,0});
+          M = glm::scale(M, {0.13f, 0.32f, 0.13f});
+          draw(mCyl, prog, M, cKulit); }
+          
+        // Sepatu (agak membulat)
+        { glm::mat4 M = knee * glm::translate(glm::mat4(1),{0,-0.36f, 0.06f});
+          M = glm::scale(M, {0.16f, 0.12f, 0.24f});
+          draw(mSphere, prog, M, cSepatu); }
+    }
 
-    // Lengan kiri
-    {glm::mat4 M=torso*glm::translate(glm::mat4(1),{-0.22f,0.08f,0});
-     M=glm::rotate(M,glm::radians(-armSw-bendDeg*0.5f),{1,0,0});
-     M=glm::translate(M,{0,-0.17f,0});M=glm::scale(M,{0.12f,0.34f,0.12f});
-     draw(mBox,prog,M,cBaju);}
-    // Lengan kanan
-    {glm::mat4 M=torso*glm::translate(glm::mat4(1),{0.22f,0.08f,0});
-     M=glm::rotate(M,glm::radians(armSw-bendDeg*0.5f),{1,0,0});
-     M=glm::translate(M,{0,-0.17f,0});M=glm::scale(M,{0.12f,0.34f,0.12f});
-     draw(mBox,prog,M,cBaju);}
+    // ── Torso (bungkuk) ──
+    glm::mat4 torso = root * glm::translate(glm::mat4(1), {0, 1.05f, 0});
+    torso = glm::rotate(torso, bendRad, {1,0,0});
+    { glm::mat4 M = torso * glm::scale(glm::mat4(1), {0.38f, 0.54f, 0.26f});
+      // Baju lebih tebal dan membulat dari silinder
+      draw(mCyl, prog, M, cKemeja); }
 
-    // Kepala
-    {glm::mat4 M=torso*glm::translate(glm::mat4(1),{0,0.47f,0});
-     M=glm::scale(M,{0.21f,0.23f,0.21f});draw(mSphere,prog,M,cKulit);}
+    // ── Lengan ──
+    for(int side : {-1, 1}){
+        float sw = side == -1 ? (-armSw - bendDeg*0.5f) : (armSw - bendDeg*0.5f);
+        // Bahu membulat
+        glm::mat4 shoulder = torso * glm::translate(glm::mat4(1), {side*0.24f, 0.18f, 0});
+        shoulder = glm::rotate(shoulder, glm::radians(sw), {1,0,0});
+        { glm::mat4 M = shoulder * glm::scale(glm::mat4(1), {0.14f, 0.14f, 0.14f});
+          draw(mSphere, prog, M, cKemeja); }
 
-    // Topi brim
-    {glm::mat4 M=torso*TRS({0,0.64f,0},{0.26f,0.04f,0.26f});
-     draw(mBox,prog,M,{0.28f,0.16f,0.06f});}
-    // Topi tinggi
-    {glm::mat4 M=torso*TRS({0,0.70f,0},{0.17f,0.10f,0.17f});
-     draw(mBox,prog,M,{0.28f,0.16f,0.06f});}
+        // Lengan atas (silinder)
+        { glm::mat4 M = shoulder * glm::translate(glm::mat4(1),{0,-0.14f,0});
+          M = glm::scale(M, {0.12f, 0.28f, 0.12f});
+          draw(mCyl, prog, M, cKemeja); }
+          
+        // Siku membulat
+        glm::mat4 elbow = shoulder * glm::translate(glm::mat4(1),{0,-0.28f,0});
+        elbow = glm::rotate(elbow, glm::radians(sw*0.3f), {1,0,0});
+        { glm::mat4 M = elbow * glm::scale(glm::mat4(1), {0.11f, 0.11f, 0.11f});
+          draw(mSphere, prog, M, cKulit); }
+
+        // Lengan bawah (silinder)
+        { glm::mat4 M = elbow * glm::translate(glm::mat4(1),{0,-0.13f,0});
+          M = glm::scale(M, {0.10f, 0.26f, 0.10f});
+          draw(mCyl, prog, M, cKulit); }
+          
+        // Tangan (kepalan tangan)
+        { glm::mat4 M = elbow * glm::translate(glm::mat4(1),{0,-0.28f,0});
+          M = glm::scale(M, {0.11f, 0.11f, 0.11f});
+          draw(mSphere, prog, M, cKulit); }
+    }
+
+    // ── Leher ──
+    { glm::mat4 M = torso * TRS({0, 0.31f, 0}, {0.11f, 0.12f, 0.11f});
+      draw(mBox, prog, M, cKulit); }
+
+    // ── Kepala ──
+    glm::mat4 head = torso * glm::translate(glm::mat4(1), {0, 0.48f, 0});
+    { glm::mat4 M = head * glm::scale(glm::mat4(1), {0.24f, 0.26f, 0.22f});
+      draw(mSphere, prog, M, cKulit); }
+    // Mata kiri
+    { glm::mat4 M = head * TRS({-0.07f, 0.04f, 0.12f}, {0.025f, 0.025f, 0.025f});
+      draw(mSphere, prog, M, {0.1f, 0.06f, 0.02f}); }
+    // Mata kanan
+    { glm::mat4 M = head * TRS({ 0.07f, 0.04f, 0.12f}, {0.025f, 0.025f, 0.025f});
+      draw(mSphere, prog, M, {0.1f, 0.06f, 0.02f}); }
+
+    // ── Topi jerami (brim lebar + crown) ──
+    glm::vec3 cTopi = {0.85f, 0.72f, 0.38f};
+    { glm::mat4 M = head * TRS({0, 0.16f, 0}, {0.42f, 0.03f, 0.42f});
+      draw(mCyl, prog, M, cTopi); }   // brim topi melingkar (silinder pipih)
+    { glm::mat4 M = head * TRS({0, 0.24f, 0}, {0.24f, 0.16f, 0.24f});
+      draw(mSphere, prog, M, {0.78f, 0.64f, 0.28f}); }  // crown membulat (sphere)
 }
 
 // ──────────────────────────────────────────────────────────
-//  GAMBAR GEROBAK
+//  GAMBAR GEROBAK  (wheelbarrow realistis - DIPERBESAR)
 // ──────────────────────────────────────────────────────────
-static void drawGerobak(unsigned int prog,Mesh& mBox,Mesh& mCyl,
-                        glm::vec3 gp,float wAngle)
+static void drawGerobak(unsigned int prog, Mesh& mBox, Mesh& mCyl,
+                        glm::vec3 gp, float wAngle)
 {
-    glm::vec3 cW={0.52f,0.33f,0.14f};
-    glm::vec3 cB={0.18f,0.18f,0.18f};
-    // Bak
-    {glm::mat4 M=TRS(gp+glm::vec3{0,0.50f,0},{0.80f,0.38f,0.55f});
-     draw(mBox,prog,M,cW);}
-    // Roda
-    {glm::mat4 M=glm::translate(glm::mat4(1),gp+glm::vec3{0,0.27f,0.44f});
-     M=glm::rotate(M,glm::radians(wAngle),{1,0,0});
-     M=glm::rotate(M,glm::radians(90.0f),{0,0,1});
-     M=glm::scale(M,{0.27f,0.07f,0.27f});
-     draw(mCyl,prog,M,cB);}
-    // Tongkat kiri & kanan
-    for(int s:{-1,1}){
-        glm::mat4 M=glm::translate(glm::mat4(1),gp+glm::vec3{s*0.30f,0.55f,-0.30f});
-        M=glm::rotate(M,glm::radians(-30.0f),{1,0,0});
-        M=glm::scale(M,{0.04f,0.95f,0.04f});
-        draw(mBox,prog,M,cW);}
-    // Kaki bawah
-    for(int s:{-1,1}){
-        glm::mat4 M=glm::translate(glm::mat4(1),gp+glm::vec3{s*0.27f,0.14f,-0.16f});
-        M=glm::rotate(M,glm::radians(18.0f),{1,0,0});
-        M=glm::scale(M,{0.05f,0.38f,0.05f});
-        draw(mBox,prog,M,cB);}
+    // Warna
+    glm::vec3 cKayu  = {0.55f, 0.35f, 0.14f};  // bak kayu
+    glm::vec3 cBesi  = {0.25f, 0.25f, 0.28f};  // rangka besi
+    glm::vec3 cRoda  = {0.15f, 0.15f, 0.15f};  // roda karet
+    glm::vec3 cRim   = {0.55f, 0.55f, 0.58f};  // velg
+
+    // Scale-up multiplier
+    float sM = 1.3f;
+
+    // ── Bak (trapesium: bawah lebih kecil dari atas, sedikit miring ke depan) ──
+    // Bagian bawah bak
+    { glm::mat4 M = TRS(gp + glm::vec3{0, 0.30f, 0.0f}, {0.70f*sM, 0.06f, 0.65f*sM});
+      draw(mBox, prog, M, cKayu); }
+    // Sisi kiri bak
+    { glm::mat4 M = glm::translate(glm::mat4(1), gp + glm::vec3{-0.36f*sM, 0.45f, 0.0f});
+      M = glm::rotate(M, glm::radians(12.0f), {0,0,1});
+      M = glm::scale(M, {0.06f, 0.40f*sM, 0.68f*sM});
+      draw(mBox, prog, M, cKayu); }
+    // Sisi kanan bak
+    { glm::mat4 M = glm::translate(glm::mat4(1), gp + glm::vec3{0.36f*sM, 0.45f, 0.0f});
+      M = glm::rotate(M, glm::radians(-12.0f), {0,0,1});
+      M = glm::scale(M, {0.06f, 0.40f*sM, 0.68f*sM});
+      draw(mBox, prog, M, cKayu); }
+    // Depan bak
+    { glm::mat4 M = glm::translate(glm::mat4(1), gp + glm::vec3{0, 0.45f, 0.34f*sM});
+      M = glm::rotate(M, glm::radians(-10.0f), {1,0,0});
+      M = glm::scale(M, {0.80f*sM, 0.40f*sM, 0.06f});
+      draw(mBox, prog, M, cKayu); }
+    // Belakang bak
+    { glm::mat4 M = TRS(gp + glm::vec3{0, 0.45f, -0.34f*sM}, {0.80f*sM, 0.40f*sM, 0.06f});
+      draw(mBox, prog, M, cKayu); }
+
+    // ── Roda depan (satu roda besar) ──
+    { glm::mat4 M = glm::translate(glm::mat4(1), gp + glm::vec3{0, 0.20f, 0.48f*sM});
+      M = glm::rotate(M, glm::radians(wAngle), {1,0,0});
+      M = glm::rotate(M, glm::radians(90.0f), {0,0,1});
+      M = glm::scale(M, {0.26f, 0.08f, 0.26f});
+      draw(mCyl, prog, M, cRoda); }
+    // Rim roda
+    { glm::mat4 M = glm::translate(glm::mat4(1), gp + glm::vec3{0, 0.20f, 0.48f*sM});
+      M = glm::rotate(M, glm::radians(wAngle), {1,0,0});
+      M = glm::rotate(M, glm::radians(90.0f), {0,0,1});
+      M = glm::scale(M, {0.21f, 0.11f, 0.21f});
+      draw(mCyl, prog, M, cRim); }
+    // Fork/garpu roda (kiri dan kanan)
+    for(int s : {-1,1}){
+        glm::mat4 M = glm::translate(glm::mat4(1), gp + glm::vec3{s*0.06f, 0.30f, 0.35f*sM});
+        M = glm::rotate(M, glm::radians(-20.0f), {1,0,0});
+        M = glm::scale(M, {0.04f, 0.35f, 0.04f});
+        draw(mBox, prog, M, cBesi); }
+
+    // ── Rangka bawah (dua batang memanjang) ──
+    for(int s : {-1,1}){
+        glm::mat4 M = TRS(gp + glm::vec3{s*0.25f*sM, 0.16f, 0.0f},
+                          {0.05f, 0.07f, 1.0f*sM});
+        draw(mBox, prog, M, cBesi); }
+
+    // ── Pegangan / handle (dua batang ke belakang, agak naik) ──
+    for(int s : {-1,1}){
+        glm::mat4 M = glm::translate(glm::mat4(1), gp + glm::vec3{s*0.25f*sM, 0.45f, -0.32f*sM});
+        M = glm::rotate(M, glm::radians(-28.0f), {1,0,0});
+        M = glm::scale(M, {0.05f, 0.70f, 0.05f});
+        draw(mBox, prog, M, cKayu); }
+    // Pegangan palang (grip bar)
+    { glm::mat4 M = TRS(gp + glm::vec3{0, 0.70f, -0.75f*sM}, {0.60f*sM, 0.05f, 0.05f});
+      draw(mBox, prog, M, cKayu); }
+
+    // ── Kaki penyangga (dua batang V ke bawah) ──
+    for(int s : {-1,1}){
+        glm::mat4 M = glm::translate(glm::mat4(1), gp + glm::vec3{s*0.20f*sM, 0.13f, -0.28f*sM});
+        M = glm::rotate(M, glm::radians(25.0f), {1,0,0});
+        M = glm::scale(M, {0.04f, 0.35f, 0.04f});
+        draw(mBox, prog, M, cBesi); }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -478,120 +611,189 @@ int main(){
 
         // ── UPDATE ────────────────────────────────────────
 
-        // Feeding - peternak memberi pakan satu-satu
-        if(simState==SimState::FEEDING){
-            // Peternak fase 100+i: berjalan ke ayam ke-i
-            if(peternak.phase >= 100 && peternak.phase < 100+NUM_AYAM){
+        // ── FEEDING: peternak memberi pakan satu-satu ke 50 ayam ──────────
+        if(simState == SimState::FEEDING){
+            // Fase 100+i → beri pakan ke ayam ke-i
+            if(peternak.phase >= 100 && peternak.phase < 100 + NUM_AYAM){
                 int idx = peternak.phase - 100;
-                if(idx < NUM_AYAM){
-                    glm::vec3 targetPos = ayamBasePos[idx];
-                    float dist = glm::distance(peternak.pos, targetPos);
-                    
-                    // Jalan ke ayam
-                    if(dist > 0.25f){
-                        glm::vec3 dir = glm::normalize(targetPos - peternak.pos);
-                        peternak.pos += dir * peternak.speed * deltaTime;
-                        peternak.walkAnim += deltaTime * 6.0f;
-                        peternak.rot = glm::degrees(atan2f(dir.x, -dir.z));
-                        peternak.walking = true;
-                    } else {
-                        // Sudah sampai, beri pakan (bungkuk)
-                        float el = now - peternak.phaseTimer;
-                        if(el < 0.1f) peternak.phaseTimer = now;  // Set timer saat pertama sampai
-                        
-                        el = now - peternak.phaseTimer;
-                        peternak.bendAngle = 25.0f * sinf(el * 3.5f);
-                        ayamBobs[idx] = 0.08f * sinf(el * 8.0f);
-                        ayamFeeding[idx] = true;
-                        
-                        if(el > 1.2f){
-                            // Selesai memberi pakan ke ayam ini, lanjut ke ayam berikutnya
-                            ayamFeeding[idx] = false;
-                            ayamBobs[idx] = 0;
-                            peternak.bendAngle = 0;
-                            peternak.phase++;
-                            peternak.phaseTimer = now;
-                            peternak.totalChickenProcessed++;
-                            
-                            // Telur muncul setelah diberi pakan
-                            eggs[idx].visible = true;
-                            eggs[idx].spawnTime = now + 0.2f;
-                        }
+
+                glm::vec3 ayamPos = ayamBasePos[idx];
+                // Laning: Peternak hanya boleh berada di tengah lorong (X=0)
+                glm::vec3 targetPos = glm::vec3(0.0f, peternak.pos.y, ayamPos.z);
+                float dist = glm::distance(peternak.pos, targetPos);
+
+                if(dist > 0.22f){
+                    // --- BERJALAN menuju ayam ---
+                    glm::vec3 dir = glm::normalize(targetPos - peternak.pos);
+                    peternak.pos     += dir * peternak.speed * deltaTime;
+                    peternak.walkAnim += deltaTime * 7.0f;
+                    peternak.rot      = glm::degrees(atan2f(dir.x, -dir.z));
+                    peternak.walking  = true;
+                    peternak.bendAngle = 0.0f;
+                    // Reset flag arrived setiap kali masih berjalan
+                    if(peternak.arrived){
+                        peternak.arrived    = false;
+                        peternak.phaseTimer = now;
+                    }
+                } else {
+                    // --- SUDAH SAMPAI → beri pakan (animasi bungkuk) ---
+                    peternak.walking = false;
+                    // Catat waktu tiba hanya sekali (via flag arrived)
+                    if(!peternak.arrived){
+                        peternak.arrived    = true;
+                        peternak.phaseTimer = now;  // catat waktu tiba
+                    }
+                    // Animasi bungkuk ke arah ayam di samping lorong
+                    float el = now - peternak.phaseTimer;
+                    // Putar badan peternak menghadap ayam yang ada di kiri/kanan saat berhenti
+                    glm::vec3 faceDir = glm::normalize(ayamPos - peternak.pos);
+                    peternak.rot = glm::degrees(atan2f(faceDir.x, -faceDir.z));
+                    peternak.bendAngle  = 28.0f * sinf(el * 3.5f);
+                    ayamBobs[idx]       = 0.09f * sinf(el * 9.0f);
+                    ayamFeeding[idx]    = true;
+
+                    if(el > 1.3f){
+                        // Selesai beri pakan → lanjut ke ayam berikutnya
+                        ayamFeeding[idx]  = false;
+                        ayamBobs[idx]     = 0.0f;
+                        peternak.bendAngle = 0.0f;
+                        peternak.arrived  = false;
+                        peternak.phase++;
+                        peternak.phaseTimer = now;
+                        peternak.totalChickenProcessed++;
+                        // Telur muncul sesaat setelah diberi pakan
+                        eggs[idx].visible   = true;
+                        eggs[idx].spawnTime = now + 0.15f;
                     }
                 }
             }
-            
-            // Setelah selesai memberi pakan semua ayam
+
+            // Selesai semua ayam → peternak kembali ke pintu masuk (fase 50)
             if(peternak.phase >= 100 + NUM_AYAM){
-                peternak.phase = 0;
-                simState = SimState::IDLE;
-                peternak.walking = false;
-                peternak.bendAngle = 0;
+                peternak.phase     = 50;  // fase return
+                peternak.arrived   = false;
+                peternak.bendAngle = 0.0f;
+                peternak.phaseTimer = now;
             }
-            
+
+            // Fase 50: peternak kembali berjalan ke pintu masuk
+            if(peternak.phase == 50){
+                glm::vec3 pintu = {0.6f, 0.0f, 3.8f};
+                float dist = glm::distance(peternak.pos, pintu);
+                if(dist > 0.25f){
+                    glm::vec3 dir = glm::normalize(pintu - peternak.pos);
+                    peternak.pos      += dir * peternak.speed * deltaTime;
+                    peternak.walkAnim += deltaTime * 7.0f;
+                    peternak.rot       = glm::degrees(atan2f(dir.x, -dir.z));
+                    peternak.walking   = true;
+                } else {
+                    // Sudah kembali ke pintu
+                    peternak.pos     = pintu;
+                    peternak.rot     = 180.0f;
+                    peternak.walking = false;
+                    peternak.phase   = 0;
+                    simState         = SimState::IDLE;
+                }
+            }
+
+            // Upload data bob ayam ke GPU setiap frame
             glBindBuffer(GL_ARRAY_BUFFER, vboBob);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_AYAM*sizeof(float), ayamBobs);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_AYAM * sizeof(float), ayamBobs);
         }
 
-        // Harvesting - peternak mengambil telur satu-satu
-        if(simState==SimState::HARVESTING){
-            // Gerobak bergerak
+        // ── HARVESTING: peternak mendorong gerobak + panen telur satu-satu ──
+        if(simState == SimState::HARVESTING){
             if(gerobak.active){
-                float dir = gerobak.returning ? 1.0f : -1.0f;
-                gerobak.pos.z += dir * gerobak.speed * deltaTime;
-                gerobak.wheelAngle += gerobak.speed * deltaTime * 180.0f;
-                
-                // Peternak mengambil telur satu-satu
-                if(peternak.phase >= 200 && peternak.phase < 200+NUM_AYAM){
+
+                // Fase 200+i → ambil telur ke-i
+                if(peternak.phase >= 200 && peternak.phase < 200 + NUM_AYAM){
                     int idx = peternak.phase - 200;
+
                     if(idx < NUM_AYAM && eggs[idx].visible){
-                        // Posisi telur
                         glm::vec3 eggPos = eggs[idx].pos;
-                        float dist = glm::distance(peternak.pos, eggPos);
-                        
-                        // Jalan ke telur
-                        if(dist > 0.2f){
-                            glm::vec3 dir = glm::normalize(eggPos - peternak.pos);
-                            peternak.pos += dir * peternak.speed * deltaTime;
-                            peternak.walkAnim += deltaTime * 6.0f;
-                            peternak.rot = glm::degrees(atan2f(dir.x, -dir.z));
-                            peternak.walking = true;
+                        // Laning: Peternak hanya di tengah lorong (X=0)
+                        glm::vec3 targetPos = glm::vec3(0.0f, peternak.pos.y, eggPos.z);
+                        float dist = glm::distance(peternak.pos, targetPos);
+
+                        if(dist > 0.15f){
+                            // --- BERJALAN di lorong ---
+                            glm::vec3 dir = glm::normalize(targetPos - peternak.pos);
+                            peternak.pos      += dir * peternak.speed * deltaTime;
+                            peternak.walkAnim  += deltaTime * 7.0f;
+                            peternak.rot       = glm::degrees(atan2f(dir.x, -dir.z));
+                            peternak.walking   = true;
+                            peternak.bendAngle = 0.0f;
+                            if(peternak.arrived){
+                                peternak.arrived    = false;
+                                peternak.phaseTimer = now;
+                            }
                         } else {
-                            // Ambil telur
+                            // --- SUDAH SAMPAI → ambil telur (bungkuk sebentar) ---
+                            peternak.walking = false;
+                            if(!peternak.arrived){
+                                peternak.arrived    = true;
+                                peternak.phaseTimer = now;
+                            }
+                            
+                            // Hadap telur
+                            glm::vec3 faceDir = glm::normalize(eggPos - peternak.pos);
+                            peternak.rot = glm::degrees(atan2f(faceDir.x, -faceDir.z));
+                            
                             float el = now - peternak.phaseTimer;
-                            if(el < 0.1f) peternak.phaseTimer = now;
-                            
-                            el = now - peternak.phaseTimer;
-                            peternak.bendAngle = 15.0f * sinf(el * 4.0f);
-                            
-                            if(el > 0.8f){
-                                // Telur sudah diambil
-                                eggs[idx].visible = false;
+                            peternak.bendAngle = 20.0f * sinf(el * 4.5f);
+
+                            if(el > 0.9f){
+                                // Telur masuk gerobak
+                                eggs[idx].visible  = false;
                                 gerobak.eggsHarvested++;
-                                peternak.bendAngle = 0;
+                                peternak.bendAngle  = 0.0f;
+                                peternak.arrived    = false;
                                 peternak.phase++;
                                 peternak.phaseTimer = now;
                                 peternak.totalChickenProcessed++;
                             }
                         }
                     } else {
+                        // Telur tidak ada (belum diberi pakan) → lewati
                         peternak.phase++;
+                        peternak.arrived    = false;
                         peternak.phaseTimer = now;
                     }
+
+                    // Gerobak ATTACHED ke peternak (mengikuti di belakang kanan)
+                    float pRad = glm::radians(peternak.rot);
+                    gerobak.pos = peternak.pos
+                        + glm::vec3(sinf(pRad) * (-0.55f), 0.0f, -cosf(pRad) * (-0.55f));
+                    gerobak.pos.y = 0.0f;
+                    gerobak.wheelAngle += peternak.speed * deltaTime * 150.0f;
                 }
-                
-                // Setelah selesai mengambil semua telur
-                if(peternak.phase >= 200 + NUM_AYAM){
+
+                // Selesai semua telur → gerobak kembali ke depan
+                if(peternak.phase >= 200 + NUM_AYAM && !harvestDone){
+                    harvestDone      = true;
                     gerobak.returning = true;
-                    harvestDone = true;
                 }
-                
-                // Gerobak kembali
-                if(gerobak.returning && gerobak.pos.z >= 6.5f){
-                    gerobak.active = false;
-                    simState = SimState::IDLE;
-                    peternak.phase = 0;
-                    peternak.walking = false;
+
+                // Fase return: gerobak bergerak mundur ke posisi awal
+                if(gerobak.returning){
+                    peternak.walking = true;
+                    peternak.walkAnim += deltaTime * 7.0f;
+                    peternak.rot      = 0.0f;  // hadap ke depan (keluar kandang)
+                    peternak.pos.z   += gerobak.speed * deltaTime;
+                    // Gerobak masih attached saat return
+                    gerobak.pos       = peternak.pos
+                        + glm::vec3(sinf(glm::radians(peternak.rot)) * (-0.55f),
+                                    0.0f,
+                                    -cosf(glm::radians(peternak.rot)) * (-0.55f));
+                    gerobak.wheelAngle += gerobak.speed * deltaTime * 150.0f;
+
+                    if(peternak.pos.z >= 5.5f){
+                        gerobak.active    = false;
+                        peternak.walking  = false;
+                        peternak.phase    = 0;
+                        peternak.arrived  = false;
+                        simState          = SimState::IDLE;
+                    }
                 }
             }
         }
@@ -629,53 +831,128 @@ int main(){
             draw(mWall,progStd,TRS({0,TINGGI_DINDING,z},{TOTAL_W,0.10f,0.10f}),cKayu);
         }
 
-        // Dinding kawat tipis kiri & kanan
+        // Dinding samping kiri & kanan (Tembok bata/kayu di bawah, kawat di atas sebagai jendela)
         for(int s=0;s<JML_SEKSI;s++){
-            float zM=-(s*seksiD+seksiD*0.5f);
-            float len=seksiD;
-            draw(mWall,progStd,TRS({-HALF_W,TINGGI_DINDING*0.5f,zM},{0.04f,TINGGI_DINDING,len},0,90),cKawat);
-            draw(mWall,progStd,TRS({ HALF_W,TINGGI_DINDING*0.5f,zM},{0.04f,TINGGI_DINDING,len},0,90),cKawat);
+            float zM = -(s * seksiD + seksiD * 0.5f);
+            float len = seksiD;
+            
+            // Tembok solid bagian bawah (tinggi 1.2m)
+            draw(mWall, progStd, TRS({-HALF_W, 0.6f, zM}, {0.06f, 1.2f, len}), cKrem); // Kiri
+            draw(mWall, progStd, TRS({ HALF_W, 0.6f, zM}, {0.06f, 1.2f, len}), cKrem); // Kanan
+
+            // Kawat bagian atas (tinggi dari 1.2m ke TINGGI_DINDING)
+            float kawatH = TINGGI_DINDING - 1.2f;
+            float kawatY = 1.2f + kawatH * 0.5f;
+            draw(mWall, progStd, TRS({-HALF_W, kawatY, zM}, {0.02f, kawatH, len}), cKawat); // Kiri
+            draw(mWall, progStd, TRS({ HALF_W, kawatY, zM}, {0.02f, kawatH, len}), cKawat); // Kanan
+            
+            // Kusen / frame pemisah di tengah jendela (vertikal)
+            draw(mPillarSq, progStd, TRS({-HALF_W, kawatY, zM}, {0.6f, kawatH, 0.6f}), cKayu); // Kiri
+            draw(mPillarSq, progStd, TRS({ HALF_W, kawatY, zM}, {0.6f, kawatH, 0.6f}), cKayu); // Kanan
         }
-        // Dinding depan & belakang
-        draw(mWall,progStd,TRS({0,TINGGI_DINDING*0.5f,0.1f},{TOTAL_W,TINGGI_DINDING,0.04f}),cKawat);
+        // ── Dinding belakang (solid kawat) ──
         draw(mWall,progStd,TRS({0,TINGGI_DINDING*0.5f,-(TOTAL_D-0.1f)},{TOTAL_W,TINGGI_DINDING,0.04f}),cKawat);
 
-        // Atap per seksi (miring + ridge)
-        for(int s=0;s<JML_SEKSI;s++){
-            float zM=-(s*seksiD+seksiD*0.5f);
-            float sD=seksiD+0.28f;
-            // Kiri
-            {glm::mat4 M=glm::translate(glm::mat4(1),{-HALF_W*0.5f,TINGGI_DINDING+0.58f,zM});
-             M=glm::rotate(M,glm::radians(22.0f),{0,0,1});
-             M=glm::scale(M,{HALF_W+0.65f,0.13f,sD});draw(mRoofSlb,progStd,M,cGenteng);}
-            // Kanan
-            {glm::mat4 M=glm::translate(glm::mat4(1),{HALF_W*0.5f,TINGGI_DINDING+0.58f,zM});
-             M=glm::rotate(M,glm::radians(-22.0f),{0,0,1});
-             M=glm::scale(M,{HALF_W+0.65f,0.13f,sD});draw(mRoofSlb,progStd,M,cGenteng);}
-            // Ridge
-            draw(mRoofRdg,progStd,TRS({0,TINGGI_DINDING+1.02f,zM},{1,1,sD}),cKayuTua);
+        // ── Dinding depan: frame PINTU / gerbang di tengah, kawat di sisi ──
+        // Lebar bukaan pintu di lorong tengah: LORONG_W
+        // Panel kawat kiri (dari tiang kiri sampai tepi lorong)
+        {
+            float panelW = HALF_W - LORONG_W * 0.5f;
+            float panelCX = -(HALF_W - panelW * 0.5f);
+            draw(mWall,progStd,TRS({panelCX, TINGGI_DINDING*0.5f, 0.1f},
+                                   {panelW, TINGGI_DINDING, 0.04f}),cKawat);
         }
-        // Overhang depan & belakang
-        for(float zo:{0.32f,-(TOTAL_D+0.02f)}){
-            for(int sd:{-1,1}){
-                glm::mat4 M=glm::translate(glm::mat4(1),{sd*HALF_W*0.5f,TINGGI_DINDING+0.55f,zo});
-                M=glm::rotate(M,glm::radians((float)sd*22.0f),{0,0,1});
-                M=glm::scale(M,{HALF_W+0.65f,0.13f,0.52f});draw(mRoofSlb,progStd,M,cGenteng);}}
+        // Panel kawat kanan
+        {
+            float panelW = HALF_W - LORONG_W * 0.5f;
+            float panelCX = HALF_W - panelW * 0.5f;
+            draw(mWall,progStd,TRS({panelCX, TINGGI_DINDING*0.5f, 0.1f},
+                                   {panelW, TINGGI_DINDING, 0.04f}),cKawat);
+        }
+        // Tiang kiri pintu
+        draw(mPillarSq,progStd,
+             TRS({-LORONG_W*0.5f, TINGGI_DINDING*0.5f, 0.1f},{1,TINGGI_DINDING,1}),cKayu);
+        // Tiang kanan pintu
+        draw(mPillarSq,progStd,
+             TRS({ LORONG_W*0.5f, TINGGI_DINDING*0.5f, 0.1f},{1,TINGGI_DINDING,1}),cKayu);
+        // Balok atas pintu (lintel)
+        draw(mWall,progStd,
+             TRS({0, TINGGI_DINDING*0.80f, 0.1f},{LORONG_W, 0.14f, 0.14f}),cKayuTua);
+        // Papan nama kecil di atas lintel
+        draw(mWall,progStd,
+             TRS({0, TINGGI_DINDING*0.90f, 0.08f},{LORONG_W*0.7f, 0.18f, 0.06f}),{0.82f,0.62f,0.22f});
+
+        // \u2500\u2500 Atap (rumus geometri benar) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        // Pitch 20 derajat dari horizontal
+        // - Eave  (tepi bawah) ada di x = ±HALF_W, y = TINGGI_DINDING
+        // - Ridge (puncak)     ada di x = 0,       y = TINGGI_DINDING + HALF_W*tan(pitch)
+        {
+            float pitchRad = glm::radians(ROOF_PITCH_DEG);
+            float rise     = HALF_W * tanf(pitchRad);          // tinggi puncak dari atas dinding
+            float ridgeY   = TINGGI_DINDING + rise;            // y puncak atap
+            float slope    = HALF_W / cosf(pitchRad);          // panjang panel sepanjang lereng
+            // Posisi center panel kiri: midpoint antara eave(-HALF_W, TINGGI_DINDING)
+            //   dan ridge(0, ridgeY) dalam bidang XY
+            float panelCX  = -HALF_W * 0.5f;
+            float panelCY  = (TINGGI_DINDING + ridgeY) * 0.5f;
+
+            for(int s = 0; s < JML_SEKSI; s++){
+                float zM = -(s*seksiD + seksiD*0.5f);
+                float sD =  seksiD + 0.30f;   // sedikit overlap antar seksi
+
+                // Panel KIRI  (+pitch CCW dari sumbu Z)
+                { glm::mat4 M = glm::translate(glm::mat4(1), {panelCX, panelCY, zM});
+                  M = glm::rotate(M, pitchRad, {0,0,1});
+                  M = glm::scale(M, {slope, 0.12f, sD});
+                  draw(mRoofSlb, progStd, M, cGenteng); }
+
+                // Panel KANAN (mirror)
+                { glm::mat4 M = glm::translate(glm::mat4(1), {-panelCX, panelCY, zM});
+                  M = glm::rotate(M, -pitchRad, {0,0,1});
+                  M = glm::scale(M, {slope, 0.12f, sD});
+                  draw(mRoofSlb, progStd, M, cGenteng); }
+
+                // Ridge (bubungan puncak)
+                draw(mRoofRdg, progStd,
+                     TRS({0, ridgeY + 0.07f, zM}, {1, 1, sD}), cKayuTua);
+            }
+
+            // Overhang depan & belakang (kanopi kecil)
+            for(float zo : {0.28f, -(TOTAL_D - 0.28f)}){
+                { glm::mat4 M = glm::translate(glm::mat4(1), {panelCX, panelCY, zo});
+                  M = glm::rotate(M, pitchRad, {0,0,1});
+                  M = glm::scale(M, {slope, 0.12f, 0.50f});
+                  draw(mRoofSlb, progStd, M, cGenteng); }
+                { glm::mat4 M = glm::translate(glm::mat4(1), {-panelCX, panelCY, zo});
+                  M = glm::rotate(M, -pitchRad, {0,0,1});
+                  M = glm::scale(M, {slope, 0.12f, 0.50f});
+                  draw(mRoofSlb, progStd, M, cGenteng); }
+            }
+        }
+
+
 
         // ── SEKAT BARIS ──
-        for(int b=0;b<=BARIS_AYAM;b++){
-            float z=-(b*JARAK_Z+0.8f);
-            for(int sd:{-1,1}){
-                float cx=sd*(OFFSET_SISI+(KOLOM_AYAM*JARAK_X)*0.5f-0.2f);
-                draw(mWall,progStd,TRS({cx,0.28f,z},{KOLOM_AYAM*JARAK_X,0.5f,0.06f}),cKayu);}}
+        // ── SEKAT BARIS & LORONG ──
+        for(int b = 0; b <= BARIS_AYAM; b++){
+            float z = -(b * JARAK_Z + 1.0f) + JARAK_Z*0.5f;  
+            // Papan pemisah diletakkan di antara ayam (menyekat sumbu Z)
+            draw(mWall,progStd,TRS({-OFFSET_SISI, 0.35f, z},{0.8f, 0.70f, 0.04f}),cKawat);
+            draw(mWall,progStd,TRS({ OFFSET_SISI, 0.35f, z},{0.8f, 0.70f, 0.04f}),cKawat);
+        }
 
-        // ── TEMPAT PAKAN ──
-        float pakanW=KOLOM_AYAM*JARAK_X*0.95f;
-        float pakanX=OFFSET_SISI+(KOLOM_AYAM*JARAK_X)*0.5f-0.3f;
-        for(int b=0;b<BARIS_AYAM;b++){
-            float z=-(b*JARAK_Z+1.0f);
-            draw(mPakan,progStd,TRS({-pakanX,0.10f,z},{pakanW,1,1}),cPakanCol);
-            draw(mPakan,progStd,TRS({ pakanX,0.10f,z},{pakanW,1,1}),cPakanCol);}
+        // ── TEMPAT PAKAN (Palung memanjang di sepanjang pinggir lorong) ──
+        float pakanLen = BARIS_AYAM * JARAK_Z + 0.5f;
+        float pakanZ   = -(pakanLen * 0.5f + 0.5f);
+        // Palung kiri
+        draw(mPakan, progStd, TRS({-(OFFSET_SISI - 0.35f), 0.12f, pakanZ}, {0.3f, 1, pakanLen}), cKayu);
+        // Isi pakan kiri
+        draw(mPakan, progStd, TRS({-(OFFSET_SISI - 0.35f), 0.16f, pakanZ}, {0.26f, 1, pakanLen-0.05f}), cPakanCol);
+        
+        // Palung kanan
+        draw(mPakan, progStd, TRS({ OFFSET_SISI - 0.35f, 0.12f, pakanZ}, {0.3f, 1, pakanLen}), cKayu);
+        // Isi pakan kanan
+        draw(mPakan, progStd, TRS({ OFFSET_SISI - 0.35f, 0.16f, pakanZ}, {0.26f, 1, pakanLen-0.05f}), cPakanCol);
 
         // ── POHON ──
         float pxs[]={-HALF_W-3.5f,-HALF_W-7.0f,HALF_W+3.5f,HALF_W+7.0f,-HALF_W-5.5f,HALF_W+5.5f};
@@ -693,55 +970,147 @@ int main(){
             draw(mTelur,progStd,M,cTelurCol);}
 
         // ── GEROBAK ──
-        if(gerobak.active)
-            drawGerobak(progStd,mBox,mCyl,gerobak.pos,gerobak.wheelAngle);
+        // ── GEROBAK: selalu tampil (diparkir saat idle, aktif saat panen) ──
+        {
+            glm::vec3 gPos = gerobak.active ? gerobak.pos : glm::vec3{-1.2f, 0.0f, 3.5f};
+            float gAngle   = gerobak.active ? gerobak.wheelAngle : 0.0f;
+            drawGerobak(progStd, mBox, mCyl, gPos, gAngle);
 
-        // ── PETERNAK ──
-        if(simState!=SimState::IDLE||peternak.phase!=0){
-            drawPeternak(progStd,mBox,mCyl,mSphere,
-                peternak.pos,peternak.rot,
-                peternak.walking?peternak.walkAnim:0.0f,
-                peternak.bendAngle,
-                {0.22f,0.42f,0.18f},{0.88f,0.68f,0.48f},{0.25f,0.25f,0.38f});}
+            // Telur di dalam gerobak saat memanen
+            if(gerobak.eggsHarvested > 0){
+                int maxShow = glm::min(gerobak.eggsHarvested, 50); // Mampu menampung 50 telur secara visual
+                for(int e = 0; e < maxShow; e++){
+                    // Gerobak sudah diperbesar 1.3x.
+                    // Bak bagian dalam bisa muat grid 5 x 5 atau 6 x 5 telur per lapis.
+                    // Lebar dalam bak (X) ~ 0.7*1.3 = 0.9. Kedalaman (Z) ~ 0.65*1.3 = 0.8.
+                    int numCols = 6;
+                    int numRows = 5;
+                    int lapis = e / (numCols * numRows); // setiap 30 telur numpuk ke atas
+                    int eLapis = e % (numCols * numRows);
+                    
+                    float ex = (eLapis % numCols) * 0.12f - 0.30f;
+                    float ez = (eLapis / numCols) * 0.14f - 0.28f;
+                    float ey = 0.38f + lapis * 0.08f; // Dasar telur di bak y~0.38f
+                    
+                    glm::mat4 M = glm::translate(glm::mat4(1), gPos + glm::vec3{ex, ey, ez});
+                    M = glm::scale(M, {0.7f, 0.9f, 0.7f});
+                    draw(mTelur, progStd, M, cTelurCol);
+                }
+            }
+        }
 
-        // ── AYAM instancing ──
-        glUseProgram(progInst);
-        setMat4(progInst,"view",view);setMat4(progInst,"projection",proj);
-        setVec3(progInst,"objectColor",cAyamCol);setLight(progInst);
-        glBindVertexArray(mAyam.VAO);
-        glDrawElementsInstanced(GL_TRIANGLES,(GLsizei)mAyam.indexCount,GL_UNSIGNED_INT,nullptr,NUM_AYAM);
-        glBindVertexArray(0);
+        // ── PETERNAK: selalu tampil ──
+        drawPeternak(progStd, mBox, mCyl, mSphere,
+            peternak.pos, peternak.rot,
+            peternak.walking ? peternak.walkAnim : 0.0f,
+            peternak.bendAngle,
+            {0.22f,0.48f,0.18f},   // baju hijau kebun
+            {0.88f,0.68f,0.48f},   // kulit
+            {0.20f,0.20f,0.35f});  // celana biru-gelap
 
-        // Kepala + jengger + ekor ayam (per-instance manual — cukup cepat)
+        // HAPUS INSTANCING mAyam (kotak putih melayang yang jadi bug)
+        // Kita langsung gambar manual di bawah.
+        // Badan + Kepala + sayap + jengger + ekor + kaki ayam (manual loop lengkap & realistis)
         glUseProgram(progStd);
         setMat4(progStd,"view",view);setMat4(progStd,"projection",proj);setLight(progStd);
-        for(int i=0;i<NUM_AYAM;i++){
-            float bob=ayamBobs[i];
-            glm::vec3 bp=ayamBasePos[i]+glm::vec3{0,bob,0};
+        
+        glm::vec3 cKakiAy = {0.75f, 0.52f, 0.08f};
+        glm::vec3 cParuhAy = {0.88f, 0.65f, 0.05f};
+        glm::vec3 cPialAy  = {0.82f, 0.08f, 0.06f};
+
+        for(int i = 0; i < NUM_AYAM; i++){
+            float bob = ayamBobs[i];
+            // Anggukan kepala saat makan
+            float nod = ayamFeeding[i] ? (18.0f * sinf((float)glfwGetTime() * 9.0f + i)) : 0.0f;
+            glm::vec3 bp = ayamBasePos[i] + glm::vec3{0, bob, 0};
             
-            // Kaki kiri
-            {glm::mat4 M=glm::translate(glm::mat4(1),bp+glm::vec3{-0.08f,-0.05f,0.05f});
-             M=glm::scale(M,{0.03f,0.12f,0.03f});
-             draw(mBox,progStd,M,{0.55f,0.35f,0.15f});}
-            // Kaki kanan
-            {glm::mat4 M=glm::translate(glm::mat4(1),bp+glm::vec3{0.08f,-0.05f,0.05f});
-             M=glm::scale(M,{0.03f,0.12f,0.03f});
-             draw(mBox,progStd,M,{0.55f,0.35f,0.15f});}
-            
-            // Kepala
-            {glm::mat4 M=glm::translate(glm::mat4(1),bp+glm::vec3{0,0.19f,0.17f});
-             M=glm::scale(M,{0.13f,0.13f,0.13f});draw(mAyamKep,progStd,M,cKrem);}
-            // Jengger
-            {glm::mat4 M=glm::translate(glm::mat4(1),bp+glm::vec3{0,0.29f,0.19f});
-             M=glm::scale(M,{0.045f,0.08f,0.045f});draw(mAyamKep,progStd,M,cJengger);}
-            // Mata
-            {glm::mat4 M=glm::translate(glm::mat4(1),bp+glm::vec3{0.04f,0.22f,0.26f});
-             M=glm::scale(M,{0.02f,0.02f,0.02f});draw(mAyamKep,progStd,M,{0.0f,0.0f,0.0f});}
-            // Ekor
-            {glm::mat4 M=glm::translate(glm::mat4(1),bp+glm::vec3{0,0.10f,-0.19f});
-             M=glm::rotate(M,glm::radians(-30.0f),{1,0,0});
-             M=glm::scale(M,{0.09f,0.14f,0.11f});
-             draw(mAyamEkor,progStd,M,cAyamCol);}
+            // Rotasi ayam menghadap ke lorong (Kiri hadap Kanan/90, Kanan hadap Kiri/-90)
+            float rotY = (i % 2 == 0) ? 90.0f : -90.0f;
+            glm::mat4 rootAyam = glm::translate(glm::mat4(1), bp);
+            rootAyam = glm::rotate(rootAyam, glm::radians(rotY), {0,1,0});
+
+            // ─ Badan Ayam (pengganti instancing, membulat) ─
+            { glm::mat4 M = rootAyam * TRS({0,0.05f,0}, {0.28f, 0.22f, 0.36f});
+              draw(mSphere, progStd, M, cAyamCol); } // Bodi utama pakai sphere
+
+            // ─ Sayap ─
+            for(int s : {-1,1}){
+                glm::mat4 M = rootAyam * TRS({s*0.14f, 0.06f, -0.01f});
+                M = glm::rotate(M, glm::radians((float)s * 12.0f), {0,0,1});
+                M = glm::scale(M, {0.05f, 0.16f, 0.32f});
+                draw(mSphere, progStd, M, {cAyamCol.r*0.85f, cAyamCol.g*0.82f, cAyamCol.b*0.70f});
+            }
+
+            // ─ Kaki (2 segmen + jari) ─
+            for(int side : {-1,1}){
+                float sx = side * 0.07f;
+                // Paha (dari bawah body ke lantai)
+                { glm::mat4 M = rootAyam * TRS({sx, 0.05f, 0.06f});
+                  M = glm::rotate(M, glm::radians(-20.0f), {1,0,0});
+                  M = glm::scale(M, {0.03f, 0.14f, 0.03f});
+                  draw(mCyl, progStd, M, cKakiAy); }
+                // Betis
+                { glm::mat4 M = rootAyam * TRS({sx, -0.09f, 0.13f});
+                  M = glm::rotate(M, glm::radians(22.0f), {1,0,0});
+                  M = glm::scale(M, {0.025f, 0.13f, 0.025f});
+                  draw(mCyl, progStd, M, cKakiAy); }
+                // Jari depan
+                { glm::mat4 M = rootAyam * TRS({sx, -0.19f, 0.19f}, {0.018f, 0.018f, 0.10f});
+                  draw(mBox, progStd, M, cKakiAy); }
+            }
+
+            // ─ Leher ─
+            glm::mat4 neckM = rootAyam * TRS({0, 0.13f, 0.15f});
+            neckM = glm::rotate(neckM, glm::radians(12.0f + nod*0.3f), {1,0,0});
+            { glm::mat4 M = neckM * glm::scale(glm::mat4(1), {0.10f, 0.15f, 0.10f});
+              draw(mAyamKep, progStd, M, {cKrem.r*0.92f, cKrem.g*0.88f, cKrem.b*0.78f}); }
+
+            // ─ Kepala ─
+            glm::mat4 headM = neckM * TRS({0, 0.14f, 0.05f});
+            headM = glm::rotate(headM, glm::radians(nod), {1,0,0});
+            { glm::mat4 M = headM * glm::scale(glm::mat4(1), {0.16f, 0.15f, 0.15f});
+              draw(mAyamKep, progStd, M, cKrem); }
+
+            // Paruh atas
+            { glm::mat4 M = headM * TRS({0, -0.02f, 0.09f}, {0.045f, 0.032f, 0.075f});
+              draw(mBox, progStd, M, cParuhAy); }
+            // Paruh bawah
+            { glm::mat4 M = headM * TRS({0, -0.054f, 0.082f}, {0.038f, 0.022f, 0.055f});
+              draw(mBox, progStd, M, cParuhAy); }
+
+            // Mata (2 sisi)
+            for(int s : {-1,1}){
+                glm::mat4 M = headM * TRS({s*0.068f, 0.022f, 0.076f}, {0.028f,0.028f,0.022f});
+                draw(mAyamKep, progStd, M, {0.05f,0.05f,0.05f});
+                // Sclera putih kecil
+                glm::mat4 Mw = headM * TRS({s*0.075f, 0.030f, 0.090f}, {0.010f,0.010f,0.010f});
+                draw(mAyamKep, progStd, Mw, {0.92f,0.92f,0.92f});
+            }
+
+            // Jengger (3 lobus)
+            for(int j = 0; j < 3; j++){
+                float jx = (j - 1) * 0.022f;
+                float jh = (j == 1) ? 0.075f : 0.052f;
+                glm::mat4 M = headM * TRS({jx, 0.078f + jh*0.3f, 0.005f}, {0.032f, jh, 0.032f});
+                draw(mAyamKep, progStd, M, cJengger);
+            }
+
+            // Pial (2 bulatan di bawah paruh)
+            for(int s : {-1,1}){
+                glm::mat4 M = headM * TRS({s*0.022f, -0.072f, 0.055f}, {0.028f, 0.042f, 0.028f});
+                draw(mAyamKep, progStd, M, cPialAy);
+            }
+
+            // ─ Ekor (3 bulu melengkung) ─
+            for(int e = 0; e < 3; e++){
+                float exo = (e - 1) * 0.055f;
+                float eang = -38.0f - e * 9.0f;
+                glm::mat4 M = rootAyam * TRS({exo, 0.10f, -0.19f});
+                M = glm::rotate(M, glm::radians(eang), {1,0,0});
+                M = glm::scale(M, {0.055f, 0.14f, 0.065f});
+                draw(mAyamEkor, progStd, M,
+                     {cAyamCol.r*0.72f, cAyamCol.g*0.70f, cAyamCol.b*0.58f});
+            }
         }
 
         // Title bar
