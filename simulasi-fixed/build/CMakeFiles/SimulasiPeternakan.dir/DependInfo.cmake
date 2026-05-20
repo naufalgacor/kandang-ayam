@@ -8,9 +8,9 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "D:/Portofolio Abah/kandang-ayam/simulasi-fixed/src/glad.c" "CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj" "gcc" "CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj.d"
-  "D:/Portofolio Abah/kandang-ayam/simulasi-fixed/src/main.cpp" "CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj" "gcc" "CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj.d"
-  "D:/Portofolio Abah/kandang-ayam/simulasi-fixed/src/stb_image.cpp" "CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj" "gcc" "CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj.d"
+  "D:/kuliah/smt 4/Grafkom/kandang-ayam/simulasi-fixed/src/glad.c" "CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj" "gcc" "CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj.d"
+  "D:/kuliah/smt 4/Grafkom/kandang-ayam/simulasi-fixed/src/main.cpp" "CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj" "gcc" "CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj.d"
+  "D:/kuliah/smt 4/Grafkom/kandang-ayam/simulasi-fixed/src/stb_image.cpp" "CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj" "gcc" "CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

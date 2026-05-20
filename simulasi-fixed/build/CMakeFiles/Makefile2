@@ -44,19 +44,19 @@ cmake_force:
 SHELL = cmd.exe
 
 # The CMake executable.
-CMAKE_COMMAND = C:\msys64\mingw64\bin\cmake.exe
+CMAKE_COMMAND = D:\mingw64\bin\cmake.exe
 
 # The command to remove a file.
-RM = C:\msys64\mingw64\bin\cmake.exe -E rm -f
+RM = D:\mingw64\bin\cmake.exe -E rm -f
 
 # Escaping for special characters.
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = "D:\Portofolio Abah\kandang-ayam\simulasi-fixed"
+CMAKE_SOURCE_DIR = "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed"
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\build"
+CMAKE_BINARY_DIR = "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build"
 
 #=============================================================================
 # Directory level rules for the build root directory
@@ -84,14 +84,14 @@ clean: CMakeFiles/SimulasiPeternakan.dir/clean
 CMakeFiles/SimulasiPeternakan.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\SimulasiPeternakan.dir\build.make CMakeFiles/SimulasiPeternakan.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\SimulasiPeternakan.dir\build.make CMakeFiles/SimulasiPeternakan.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="D:\Portofolio Abah\kandang-ayam\simulasi-fixed\build\CMakeFiles" --progress-num=1,2,3,4 "Built target SimulasiPeternakan"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build\CMakeFiles" --progress-num=1,2,3,4 "Built target SimulasiPeternakan"
 .PHONY : CMakeFiles/SimulasiPeternakan.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/SimulasiPeternakan.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\build\CMakeFiles" 4
+	$(CMAKE_COMMAND) -E cmake_progress_start "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build\CMakeFiles" 4
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 CMakeFiles/SimulasiPeternakan.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\build\CMakeFiles" 0
+	$(CMAKE_COMMAND) -E cmake_progress_start "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build\CMakeFiles" 0
 .PHONY : CMakeFiles/SimulasiPeternakan.dir/rule
 
 # Convenience name for target.
@@ -101,7 +101,7 @@ SimulasiPeternakan: CMakeFiles/SimulasiPeternakan.dir/rule
 # codegen rule for target.
 CMakeFiles/SimulasiPeternakan.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\SimulasiPeternakan.dir\build.make CMakeFiles/SimulasiPeternakan.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="D:\Portofolio Abah\kandang-ayam\simulasi-fixed\build\CMakeFiles" --progress-num=1,2,3,4 "Finished codegen for target SimulasiPeternakan"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build\CMakeFiles" --progress-num=1,2,3,4 "Finished codegen for target SimulasiPeternakan"
 .PHONY : CMakeFiles/SimulasiPeternakan.dir/codegen
 
 # clean rule for target.

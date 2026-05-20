@@ -43,19 +43,19 @@ cmake_force:
 SHELL = cmd.exe
 
 # The CMake executable.
-CMAKE_COMMAND = C:\msys64\mingw64\bin\cmake.exe
+CMAKE_COMMAND = D:\mingw64\bin\cmake.exe
 
 # The command to remove a file.
-RM = C:\msys64\mingw64\bin\cmake.exe -E rm -f
+RM = D:\mingw64\bin\cmake.exe -E rm -f
 
 # Escaping for special characters.
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = "D:\Portofolio Abah\kandang-ayam\simulasi-fixed"
+CMAKE_SOURCE_DIR = "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed"
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\build"
+CMAKE_BINARY_DIR = "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build"
 
 # Include any dependencies generated for this target.
 include CMakeFiles/SimulasiPeternakan.dir/depend.make
@@ -73,48 +73,48 @@ CMakeFiles/SimulasiPeternakan.dir/codegen:
 
 CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj: CMakeFiles/SimulasiPeternakan.dir/flags.make
 CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj: CMakeFiles/SimulasiPeternakan.dir/includes_CXX.rsp
-CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj: D:/Portofolio\ Abah/kandang-ayam/simulasi-fixed/src/main.cpp
+CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj: D:/kuliah/smt\ 4/Grafkom/kandang-ayam/simulasi-fixed/src/main.cpp
 CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj: CMakeFiles/SimulasiPeternakan.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="D:\Portofolio Abah\kandang-ayam\simulasi-fixed\build\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj -MF CMakeFiles\SimulasiPeternakan.dir\src\main.cpp.obj.d -o CMakeFiles\SimulasiPeternakan.dir\src\main.cpp.obj -c "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\src\main.cpp"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj"
+	D:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj -MF CMakeFiles\SimulasiPeternakan.dir\src\main.cpp.obj.d -o CMakeFiles\SimulasiPeternakan.dir\src\main.cpp.obj -c "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\src\main.cpp"
 
 CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.i"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\src\main.cpp" > CMakeFiles\SimulasiPeternakan.dir\src\main.cpp.i
+	D:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\src\main.cpp" > CMakeFiles\SimulasiPeternakan.dir\src\main.cpp.i
 
 CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.s"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\src\main.cpp" -o CMakeFiles\SimulasiPeternakan.dir\src\main.cpp.s
+	D:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\src\main.cpp" -o CMakeFiles\SimulasiPeternakan.dir\src\main.cpp.s
 
 CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj: CMakeFiles/SimulasiPeternakan.dir/flags.make
 CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj: CMakeFiles/SimulasiPeternakan.dir/includes_C.rsp
-CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj: D:/Portofolio\ Abah/kandang-ayam/simulasi-fixed/src/glad.c
+CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj: D:/kuliah/smt\ 4/Grafkom/kandang-ayam/simulasi-fixed/src/glad.c
 CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj: CMakeFiles/SimulasiPeternakan.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="D:\Portofolio Abah\kandang-ayam\simulasi-fixed\build\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj"
-	C:\msys64\mingw64\bin\cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj -MF CMakeFiles\SimulasiPeternakan.dir\src\glad.c.obj.d -o CMakeFiles\SimulasiPeternakan.dir\src\glad.c.obj -c "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\src\glad.c"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj"
+	D:\mingw64\bin\cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj -MF CMakeFiles\SimulasiPeternakan.dir\src\glad.c.obj.d -o CMakeFiles\SimulasiPeternakan.dir\src\glad.c.obj -c "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\src\glad.c"
 
 CMakeFiles/SimulasiPeternakan.dir/src/glad.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/SimulasiPeternakan.dir/src/glad.c.i"
-	C:\msys64\mingw64\bin\cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\src\glad.c" > CMakeFiles\SimulasiPeternakan.dir\src\glad.c.i
+	D:\mingw64\bin\cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\src\glad.c" > CMakeFiles\SimulasiPeternakan.dir\src\glad.c.i
 
 CMakeFiles/SimulasiPeternakan.dir/src/glad.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/SimulasiPeternakan.dir/src/glad.c.s"
-	C:\msys64\mingw64\bin\cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\src\glad.c" -o CMakeFiles\SimulasiPeternakan.dir\src\glad.c.s
+	D:\mingw64\bin\cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\src\glad.c" -o CMakeFiles\SimulasiPeternakan.dir\src\glad.c.s
 
 CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj: CMakeFiles/SimulasiPeternakan.dir/flags.make
 CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj: CMakeFiles/SimulasiPeternakan.dir/includes_CXX.rsp
-CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj: D:/Portofolio\ Abah/kandang-ayam/simulasi-fixed/src/stb_image.cpp
+CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj: D:/kuliah/smt\ 4/Grafkom/kandang-ayam/simulasi-fixed/src/stb_image.cpp
 CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj: CMakeFiles/SimulasiPeternakan.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="D:\Portofolio Abah\kandang-ayam\simulasi-fixed\build\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj -MF CMakeFiles\SimulasiPeternakan.dir\src\stb_image.cpp.obj.d -o CMakeFiles\SimulasiPeternakan.dir\src\stb_image.cpp.obj -c "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\src\stb_image.cpp"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj"
+	D:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj -MF CMakeFiles\SimulasiPeternakan.dir\src\stb_image.cpp.obj.d -o CMakeFiles\SimulasiPeternakan.dir\src\stb_image.cpp.obj -c "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\src\stb_image.cpp"
 
 CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.i"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\src\stb_image.cpp" > CMakeFiles\SimulasiPeternakan.dir\src\stb_image.cpp.i
+	D:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\src\stb_image.cpp" > CMakeFiles\SimulasiPeternakan.dir\src\stb_image.cpp.i
 
 CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.s"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\src\stb_image.cpp" -o CMakeFiles\SimulasiPeternakan.dir\src\stb_image.cpp.s
+	D:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\src\stb_image.cpp" -o CMakeFiles\SimulasiPeternakan.dir\src\stb_image.cpp.s
 
 # Object files for target SimulasiPeternakan
 SimulasiPeternakan_OBJECTS = \
@@ -129,11 +129,11 @@ SimulasiPeternakan.exe: CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj
 SimulasiPeternakan.exe: CMakeFiles/SimulasiPeternakan.dir/src/glad.c.obj
 SimulasiPeternakan.exe: CMakeFiles/SimulasiPeternakan.dir/src/stb_image.cpp.obj
 SimulasiPeternakan.exe: CMakeFiles/SimulasiPeternakan.dir/build.make
-SimulasiPeternakan.exe: C:/msys64/mingw64/lib/libglfw3.dll.a
+SimulasiPeternakan.exe: D:/mingw64/lib/libglfw3.dll.a
 SimulasiPeternakan.exe: CMakeFiles/SimulasiPeternakan.dir/linkLibs.rsp
 SimulasiPeternakan.exe: CMakeFiles/SimulasiPeternakan.dir/objects1.rsp
 SimulasiPeternakan.exe: CMakeFiles/SimulasiPeternakan.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir="D:\Portofolio Abah\kandang-ayam\simulasi-fixed\build\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable SimulasiPeternakan.exe"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir="D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable SimulasiPeternakan.exe"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles\SimulasiPeternakan.dir\link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -145,6 +145,6 @@ CMakeFiles/SimulasiPeternakan.dir/clean:
 .PHONY : CMakeFiles/SimulasiPeternakan.dir/clean
 
 CMakeFiles/SimulasiPeternakan.dir/depend:
-	$(CMAKE_COMMAND) -E cmake_depends "MinGW Makefiles" "D:\Portofolio Abah\kandang-ayam\simulasi-fixed" "D:\Portofolio Abah\kandang-ayam\simulasi-fixed" "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\build" "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\build" "D:\Portofolio Abah\kandang-ayam\simulasi-fixed\build\CMakeFiles\SimulasiPeternakan.dir\DependInfo.cmake" "--color=$(COLOR)" SimulasiPeternakan
+	$(CMAKE_COMMAND) -E cmake_depends "MinGW Makefiles" "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed" "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed" "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build" "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build" "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build\CMakeFiles\SimulasiPeternakan.dir\DependInfo.cmake" "--color=$(COLOR)" SimulasiPeternakan
 .PHONY : CMakeFiles/SimulasiPeternakan.dir/depend
 

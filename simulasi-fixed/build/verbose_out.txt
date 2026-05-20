@@ -1,0 +1,17 @@
+D:\mingw64\bin\cmake.exe -S"D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed" -B"D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build" --check-build-system CMakeFiles\Makefile.cmake 0
+D:\mingw64\bin\cmake.exe -E cmake_progress_start "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build\CMakeFiles" "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build\\CMakeFiles\progress.marks"
+D:/mingw64/bin/mingw32-make.exe  -f CMakeFiles\Makefile2 all
+mingw32-make[1]: Entering directory 'd:/kuliah/smt 4/Grafkom/kandang-ayam/simulasi-fixed/build'
+D:/mingw64/bin/mingw32-make.exe  -f CMakeFiles\SimulasiPeternakan.dir\build.make CMakeFiles/SimulasiPeternakan.dir/depend
+mingw32-make[2]: Entering directory 'd:/kuliah/smt 4/Grafkom/kandang-ayam/simulasi-fixed/build'
+D:\mingw64\bin\cmake.exe -E cmake_depends "MinGW Makefiles" "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed" "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed" "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build" "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build" "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\build\CMakeFiles\SimulasiPeternakan.dir\DependInfo.cmake" "--color=" SimulasiPeternakan
+mingw32-make[2]: Leaving directory 'd:/kuliah/smt 4/Grafkom/kandang-ayam/simulasi-fixed/build'
+D:/mingw64/bin/mingw32-make.exe  -f CMakeFiles\SimulasiPeternakan.dir\build.make CMakeFiles/SimulasiPeternakan.dir/build
+mingw32-make[2]: Entering directory 'd:/kuliah/smt 4/Grafkom/kandang-ayam/simulasi-fixed/build'
+[ 25%] Building CXX object CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj
+D:\mingw64\bin\c++.exe -DGLFW_DLL -DUSE_ASSIMP @CMakeFiles/SimulasiPeternakan.dir/includes_CXX.rsp -std=gnu++17 -MD -MT CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj -MF CMakeFiles\SimulasiPeternakan.dir\src\main.cpp.obj.d -o CMakeFiles\SimulasiPeternakan.dir\src\main.cpp.obj -c "D:\kuliah\smt 4\Grafkom\kandang-ayam\simulasi-fixed\src\main.cpp"
+mingw32-make[2]: *** [CMakeFiles\SimulasiPeternakan.dir\build.make:79: CMakeFiles/SimulasiPeternakan.dir/src/main.cpp.obj] Error 1
+mingw32-make[2]: Leaving directory 'd:/kuliah/smt 4/Grafkom/kandang-ayam/simulasi-fixed/build'
+mingw32-make[1]: *** [CMakeFiles\Makefile2:86: CMakeFiles/SimulasiPeternakan.dir/all] Error 2
+mingw32-make[1]: Leaving directory 'd:/kuliah/smt 4/Grafkom/kandang-ayam/simulasi-fixed/build'
+mingw32-make: *** [Makefile:90: all] Error 2

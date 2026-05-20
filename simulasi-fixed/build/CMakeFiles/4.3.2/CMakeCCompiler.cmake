@@ -1,4 +1,4 @@
-set(CMAKE_C_COMPILER "C:/msys64/mingw64/bin/cc.exe")
+set(CMAKE_C_COMPILER "D:/mingw64/bin/cc.exe")
 set(CMAKE_C_COMPILER_ARG1 "")
 set(CMAKE_C_COMPILER_ID "GNU")
 set(CMAKE_C_COMPILER_VERSION "16.1.0")
@@ -24,14 +24,14 @@ set(CMAKE_C_COMPILER_ARCHITECTURE_ID "x86_64")
 
 
 
-set(CMAKE_AR "C:/msys64/mingw64/bin/ar.exe")
-set(CMAKE_C_COMPILER_AR "C:/msys64/mingw64/bin/gcc-ar.exe")
-set(CMAKE_RANLIB "C:/msys64/mingw64/bin/ranlib.exe")
-set(CMAKE_C_COMPILER_RANLIB "C:/msys64/mingw64/bin/gcc-ranlib.exe")
-set(CMAKE_LINKER "C:/msys64/mingw64/bin/ld.exe")
+set(CMAKE_AR "D:/mingw64/bin/ar.exe")
+set(CMAKE_C_COMPILER_AR "D:/mingw64/bin/gcc-ar.exe")
+set(CMAKE_RANLIB "D:/mingw64/bin/ranlib.exe")
+set(CMAKE_C_COMPILER_RANLIB "D:/mingw64/bin/gcc-ranlib.exe")
+set(CMAKE_LINKER "D:/mingw64/bin/ld.exe")
 set(CMAKE_LINKER_LINK "")
 set(CMAKE_LINKER_LLD "")
-set(CMAKE_C_COMPILER_LINKER "C:/msys64/mingw64/x86_64-w64-mingw32/bin/ld.exe")
+set(CMAKE_C_COMPILER_LINKER "D:/mingw64/x86_64-w64-mingw32/bin/ld.exe")
 set(CMAKE_C_COMPILER_LINKER_ID "GNU")
 set(CMAKE_C_COMPILER_LINKER_VERSION 2.46)
 set(CMAKE_C_COMPILER_LINKER_FRONTEND_VARIANT GNU)
@@ -79,7 +79,7 @@ endif()
 
 
 
-set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/16.1.0/include;C:/msys64/mingw64/include;C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/16.1.0/include-fixed")
+set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "D:/mingw64/lib/gcc/x86_64-w64-mingw32/16.1.0/include;D:/mingw64/include;D:/mingw64/lib/gcc/x86_64-w64-mingw32/16.1.0/include-fixed")
 set(CMAKE_C_IMPLICIT_LINK_LIBRARIES "mingw32;gcc;mingwex;kernel32;pthread;advapi32;shell32;user32;kernel32;mingw32;gcc;mingwex;kernel32")
-set(CMAKE_C_IMPLICIT_LINK_DIRECTORIES "C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/16.1.0;C:/msys64/mingw64/lib/gcc;C:/msys64/mingw64/x86_64-w64-mingw32/lib;C:/msys64/mingw64/lib")
+set(CMAKE_C_IMPLICIT_LINK_DIRECTORIES "D:/mingw64/lib/gcc/x86_64-w64-mingw32/16.1.0;D:/mingw64/lib/gcc;D:/mingw64/x86_64-w64-mingw32/lib;D:/mingw64/lib")
 set(CMAKE_C_IMPLICIT_LINK_FRAMEWORK_DIRECTORIES "")
